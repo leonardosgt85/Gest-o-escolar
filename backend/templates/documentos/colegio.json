@@ -1,0 +1,8 @@
+{
+  "_ajuda": "Dados fixos do colégio usados nos documentos para assinatura. Edite e salve: vale na próxima geração, sem reiniciar o sistema. Campo vazio sai como linha em branco para preencher à mão.",
+  "canal_revogacao": "",
+  "horario_termino_integral": "",
+  "rodape_contrato": "MINUTA — documento em elaboração. Sujeito a revisão jurídica. Não assinado.",
+  "testemunha1": { "nome": "", "cpf": "" },
+  "testemunha2": { "nome": "", "cpf": "" }
+}

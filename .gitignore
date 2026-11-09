@@ -1,0 +1,23 @@
+node_modules
+dist
+*.log
+
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Dados pessoais (CPF etc.): seeds de dados reais e arquivos de importação do SAE
+backend/seeds/*
+!backend/seeds/001_inicial.js
+backend/import/*
+!backend/import/mapa.exemplo.json
+*.csv
+*.xlsx
+*.xls
+*.sql
+*.dump
+*.bak

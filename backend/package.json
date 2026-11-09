@@ -1,0 +1,33 @@
+{
+  "name": "csm-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "migrate": "knex migrate:latest",
+    "migrate:rollback": "knex migrate:rollback",
+    "seed": "knex seed:run",
+    "db:setup": "knex migrate:latest && knex seed:run",
+    "import:sae": "node scripts/import-sae.js",
+    "autentique:schema": "node scripts/autentique-introspect.cjs --json",
+    "autentique:sandbox": "node scripts/autentique-sandbox-test.cjs",
+    "autentique:testar": "node scripts/testar-autentique.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "docxtemplater": "^3.71.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "knex": "^3.1.0",
+    "nodemailer": "^10.4.0",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.12.0",
+    "pizzip": "^3.3.0"
+  }
+}

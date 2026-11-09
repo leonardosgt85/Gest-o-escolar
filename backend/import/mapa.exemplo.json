@@ -1,0 +1,73 @@
+{
+  "_comentario": "Copie para mapa.json e ajuste os valores à direita para as chaves reais do JSON do SAE. Os nomes à esquerda são campos do CSM e não mudam.",
+  "raiz": "alunos",
+  "aluno": {
+    "legacy_id": "Codigo",
+    "campos": {
+      "nome_completo": "Nome",
+      "nome_social": "NomeSocial",
+      "cpf": "CPF",
+      "data_nascimento": "DataNascimento",
+      "matricula": "Matricula",
+      "rga": "RGA",
+      "nis": "NIS",
+      "sexo": "Sexo",
+      "estado_civil": "EstadoCivil",
+      "naturalidade": "Naturalidade",
+      "naturalidade_uf": "NaturalidadeUF",
+      "nacionalidade": "Nacionalidade",
+      "id_censo": "IdCenso",
+      "email": "Email",
+      "rg": "RG",
+      "rg_data_expedicao": "DataExpedicao",
+      "rg_orgao_emissor": "OrgaoEmissor",
+      "rg_uf": "UFRG",
+      "cor_raca": "CorRaca",
+      "necessidades_especiais": "NecessidadesEspeciais",
+      "cep": "Endereco.CEP",
+      "rua": "Endereco.Rua",
+      "numero": "Endereco.Numero",
+      "complemento": "Endereco.Complemento",
+      "bairro": "Endereco.Bairro",
+      "cidade": "Endereco.Cidade",
+      "uf": "Endereco.UF",
+      "ddd": "DDD",
+      "telefone": "Telefone",
+      "celular": "Celular",
+      "tipo_resp_pedag": "TipoRespPedag",
+      "tipo_resp_financ": "TipoRespFinanc",
+      "certidao_livro": "Certidao.Livro",
+      "certidao_folha": "Certidao.Folha",
+      "certidao_matricula": "Certidao.Matricula",
+      "certidao_data_registro": "Certidao.DataRegistro",
+      "certidao_cartorio": "Certidao.Cartorio",
+      "escola_origem": "EscolaOrigem",
+      "como_conheceu": "ComoConheceu",
+      "sit_ocupacional": "SitOcupacional",
+      "tipo_sanguineo": "TipoSanguineo",
+      "profissao": "Profissao",
+      "religiao": "Religiao",
+      "observacoes": "Observacoes"
+    },
+    "json": {
+      "processo_seletivo": "ProcessoSeletivo"
+    },
+    "responsaveis": {
+      "pai": {
+        "origem": "Pai",
+        "legacy_id": "Codigo",
+        "campos": { "nome": "Nome", "cpf": "CPF", "email": "Email", "celular": "Celular", "sexo": "Sexo" }
+      },
+      "mae": {
+        "origem": "Mae",
+        "legacy_id": "Codigo",
+        "campos": { "nome": "Nome", "cpf": "CPF", "email": "Email", "celular": "Celular", "sexo": "Sexo" }
+      },
+      "resp_pedagogico": {
+        "origem": "RespPedagogico",
+        "legacy_id": "Codigo",
+        "campos": { "nome": "Nome", "cpf": "CPF", "email": "Email", "celular": "Celular", "sexo": "Sexo" }
+      }
+    }
+  }
+}
