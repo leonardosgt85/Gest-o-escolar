@@ -33,7 +33,7 @@ export const MENU: MenuModule[] = [
       { label: 'Cadastro de Alunos', descricao: 'Ficha completa do aluno: dados, endereço, responsáveis, documentos e processo seletivo.', icone: 'alunos', to: '/academico/alunos', perm: 'academico.alunos' },
       { label: 'Valores do ano letivo', descricao: 'Valor da parcela por série e turno, número de parcelas e vencimento de cada ano.', icone: 'tag', to: '/academico/valores', perm: 'academico.valores' },
       { label: 'Pessoas (responsáveis)', descricao: 'Pais, mães e responsáveis reutilizáveis entre vários alunos.', icone: 'pessoas', to: '/academico/pessoas', perm: 'academico.pessoas', oculto: true },
-      { label: 'Relatórios', descricao: 'Listagens e relatórios acadêmicos.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos', breve: true },
+      { label: 'Relatórios', descricao: 'Listagens e relatórios acadêmicos.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos' },
       { label: 'Dashboard', descricao: 'Indicadores e visão geral da secretaria.', icone: 'dashboard', to: '/academico/dashboard', perm: 'academico.alunos', breve: true },
     ],
   },

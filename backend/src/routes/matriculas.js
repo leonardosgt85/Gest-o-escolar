@@ -43,8 +43,8 @@ router.post('/rematricula-massa/enviar', gravar, wrap(async (req, res) => res.js
 // ----- histórico do aluno -----
 router.get('/aluno/:alunoId', ler, wrap(async (req, res) => res.json(await svc.historicoDoAluno(Number(req.params.alunoId)))));
 router.post('/aluno/:alunoId', gravar, wrap(async (req, res) => {
-  const { ano, status } = req.body;
-  const m = await svc.iniciar(Number(req.params.alunoId), Number(ano), req.user.id, status === 'nao_renovou' ? 'nao_renovou' : undefined);
+  const { ano, status, tipo } = req.body;
+  const m = await svc.iniciar(Number(req.params.alunoId), Number(ano), req.user.id, status === 'nao_renovou' ? 'nao_renovou' : undefined, tipo);
   res.status(201).json({ id: m.id });
 }));
 

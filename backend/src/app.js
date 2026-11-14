@@ -14,6 +14,7 @@ import alunosRoutes from './routes/alunos.js';
 import configuracoesRoutes from './routes/configuracoes.js';
 import portalRoutes from './routes/portal.js';
 import matriculasRoutes from './routes/matriculas.js';
+import relatoriosRoutes from './routes/relatorios.js';
 import { assinaturaWebhookValida } from './services/autentique.js';
 import { processarWebhook } from './services/matriculasService.js';
 import { OPCOES } from './fields.js';
@@ -45,6 +46,7 @@ export function createApp() {
   app.use('/api/pessoas', requireAuth, pessoasRoutes);
   app.use('/api/alunos', requireAuth, alunosRoutes);
   app.use('/api/matriculas', requireAuth, matriculasRoutes);
+  app.use('/api/relatorios', requireAuth, relatoriosRoutes);
   app.use('/api/configuracoes', requireAuth, configuracoesRoutes);
   app.use('/api/portal', portalRoutes); // público: o token do link é a credencial
 

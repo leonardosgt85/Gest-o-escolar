@@ -17,6 +17,8 @@ import ValoresAno from './pages/academico/ValoresAno';
 import AlunoMatriculas from './pages/academico/AlunoMatriculas';
 import Rematricula from './pages/portal/Rematricula';
 import EmailConfig from './pages/gerencial/EmailConfig';
+import Relatorios from './pages/academico/Relatorios';
+import RelatorioDocumentos from './pages/academico/RelatorioDocumentos';
 import MatriculaPagina from './pages/academico/MatriculaPagina';
 
 function Protegido({ children }: { children: ReactElement }) {
@@ -49,6 +51,8 @@ export default function App() {
         <Route index element={<Home />} />
         {MENU.map((m) => <Route key={m.modulo} path={m.modulo} element={<ModuloHome />} />)}
 
+        <Route path="academico/relatorios" element={<Exige perm="academico.alunos"><Relatorios /></Exige>} />
+        <Route path="academico/relatorios/documentos" element={<Exige perm="academico.alunos"><RelatorioDocumentos /></Exige>} />
         <Route path="academico/alunos" element={<Exige perm="academico.alunos"><Alunos /></Exige>} />
         <Route path="academico/alunos/novo" element={<Exige perm="academico.alunos.inclusao"><AlunoForm /></Exige>} />
         <Route path="academico/alunos/:id/matriculas" element={<Exige perm="academico.alunos"><AlunoMatriculas /></Exige>} />

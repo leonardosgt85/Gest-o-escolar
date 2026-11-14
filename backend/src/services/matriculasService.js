@@ -62,13 +62,14 @@ export async function historicoDoAluno(alunoId) {
 }
 
 // Sem matrícula anterior: aluno cadastrado depois da abertura do ano é "nova"; os já existentes (importados) são "rematrícula".
+export const TIPOS_MATRICULA = ['nova', 'rematricula', 'retorno'];
 export function tipoSemAnterior(aluno, letivo) {
   const cad = aluno.created_at ? new Date(aluno.created_at) : null;
   const ab = letivo?.abertura ? new Date(letivo.abertura) : null;
   return cad && ab && cad >= ab ? 'nova' : 'rematricula';
 }
 
-export async function iniciar(alunoId, ano, usuarioId, statusInicial) {
+export async function iniciar(alunoId, ano, usuarioId, statusInicial, tipoEscolhido) {
   const letivo = await db('anos_letivos').where({ ano }).first();
   if (!letivo) throw new HttpError(400, 'Ano letivo não cadastrado.');
   if (!letivo.ativo && statusInicial !== 'nao_renovou') throw new HttpError(409, `A matrícula de ${ano} não está aberta.`);
@@ -76,7 +77,8 @@ export async function iniciar(alunoId, ano, usuarioId, statusInicial) {
   const existente = await db('matriculas').where({ aluno_id: alunoId, ano }).first();
   if (existente) throw new HttpError(409, `O aluno já tem matrícula em ${ano}.`);
   const anterior = await db('matriculas').where({ aluno_id: alunoId }).where('ano', '<', ano).whereNotIn('status', ['nao_renovou']).orderBy('ano', 'desc').first();
-  const tipo = !anterior ? tipoSemAnterior(aluno, letivo) : anterior.ano === ano - 1 ? 'rematricula' : 'retorno';
+  const sugerido = !anterior ? tipoSemAnterior(aluno, letivo) : anterior.ano === ano - 1 ? 'rematricula' : 'retorno';
+  const tipo = TIPOS_MATRICULA.includes(tipoEscolhido) ? tipoEscolhido : sugerido;
   const chave = padrao(aluno, responsaveis);
   return db.transaction(async (trx) => {
     const [m] = await trx('matriculas')
@@ -235,6 +237,14 @@ export async function atualizar(id, body, usuarioId) {
   if ('turno' in body) {
     if (body.turno && !['Manhã', 'Tarde', 'Integral'].includes(body.turno)) throw new HttpError(400, 'Turno inválido.');
     up.turno = txtv(body.turno);
+  }
+  if ('tipo' in body) {
+    if (!TIPOS_MATRICULA.includes(body.tipo)) throw new HttpError(400, 'Tipo de matrícula inválido.');
+    if (body.tipo !== m.tipo) {
+      const rotulo = { nova: 'Nova', rematricula: 'Rematrícula', retorno: 'Retorno' };
+      up.tipo = body.tipo;
+      await evento(db, id, 'tipo_alterado', 'Tipo da matrícula alterado', `${rotulo[m.tipo]} → ${rotulo[body.tipo]}`, usuarioId);
+    }
   }
   if ('origem' in body) up.origem = txtv(body.origem);
   if ('parcelas' in body) {

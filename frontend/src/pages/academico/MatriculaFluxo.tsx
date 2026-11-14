@@ -82,6 +82,11 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
   /* ---------- passos ---------- */
   const passo1 = (
     <>
+      <div style={{ marginBottom: 14 }}>
+        <div className="f-lbl">Tipo da matrícula</div>
+        <Seg rotulo="Tipo da matrícula" itens={[{ chave: 'nova', label: 'Nova' }, { chave: 'rematricula', label: 'Rematrícula' }, { chave: 'retorno', label: 'Retorno' }]} valor={m.tipo} desabilitado={travado || !podeGravar} onChange={(v) => void exec(() => salvar({ tipo: v }), 'Tipo atualizado.')} />
+        <p style={{ margin: '6px 0 0', color: 'var(--muted)', fontSize: 12 }}>Rematrícula e retorno exigem o arquivo anexado em cada documento e permitem enviar o link à família. Nova confirma os documentos por clique.</p>
+      </div>
       <div className="f-grid">
         <div>
           <label className="f-lbl" htmlFor="serie">Série em {m.ano}</label>

@@ -47,7 +47,6 @@ export async function previa(anoReq, alunoId) {
     const base = { aluno_id: al.id, nome: al.nome_completo };
     if (ex && ENCERRADAS.includes(ex.status)) { linhas.push({ ...base, situacao: 'fora', motivo: ex.status === 'ativa' ? 'Rematrícula já concluída' : ex.status === 'nao_renovou' ? 'Família informou que não vai renovar' : 'Matrícula encerrada' }); continue; }
     if (al.liberado_novas_matriculas === 'Não') { linhas.push({ ...base, situacao: 'fora', motivo: 'Bloqueado para novas matrículas' }); continue; }
-    if (ex && ex.tipo === 'nova') { linhas.push({ ...base, situacao: 'fora', motivo: 'Matrícula nova (não usa o link)' }); continue; }
 
     const { aluno, responsaveis } = await carregar(al.id);
     const chave = padrao(aluno, responsaveis);
@@ -56,7 +55,6 @@ export async function previa(anoReq, alunoId) {
     if (!resp.email) { linhas.push({ ...base, situacao: 'fora', motivo: `Sem e-mail do responsável (${resp.nome})` }); continue; }
 
     const ant = antPor.get(al.id);
-    if (!ex && !ant && mat.tipoSemAnterior(aluno, letivo) === 'nova') { linhas.push({ ...base, situacao: 'fora', motivo: 'Matrícula nova (não usa o link)' }); continue; }
     const sug = ex?.serie && ex?.turno ? { serie: ex.serie, turno: ex.turno } : sugerir(ant, precos);
     linhas.push({
       ...base, situacao: 'apto', responsavel: `${resp.nome} (${ROTULOS[chave]})`, email: resp.email,
@@ -86,8 +84,8 @@ export async function enviarLote(ano, itens, usuarioId) {
       if (!destino) throw new HttpError(400, 'Sem e-mail do responsável.');
       let m = await db('matriculas').where({ aluno_id: alunoId, ano: letivo.ano }).first();
       if (m && ENCERRADAS.includes(m.status)) throw new HttpError(409, 'Matrícula já encerrada.');
-      if (!m) m = await mat.iniciar(alunoId, letivo.ano, usuarioId);
-      if (m.tipo === 'nova') throw new HttpError(409, 'Matrícula nova não usa o link.');
+      if (!m) m = await mat.iniciar(alunoId, letivo.ano, usuarioId, undefined, 'rematricula'); // envio do link = rematrícula
+      else if (m.tipo === 'nova') { await mat.atualizar(m.id, { tipo: 'rematricula' }, usuarioId); m.tipo = 'rematricula'; }
       if (it.serie && it.turno && (m.serie !== it.serie || m.turno !== it.turno)) await mat.atualizar(m.id, { serie: it.serie, turno: it.turno }, usuarioId);
       await portal.enviarLinkPorEmail(m.id, destino, usuarioId);
       resultados.push({ aluno_id: alunoId, ok: true, email: destino });
