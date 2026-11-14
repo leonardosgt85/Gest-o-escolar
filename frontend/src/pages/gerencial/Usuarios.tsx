@@ -159,7 +159,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
               {form.professor && (
                 <div className="field span-4">
                   <label>Disciplinas que leciona</label>
-                  <DisciplinaSelect multiple value={form.disciplinas_ids || []} onChange={(v) => setForm({ ...form, disciplinas_ids: v })} readOnly={readOnly} podeCriar={can('gerencial.usuarios', ACESSO.manutencao) || can('gerencial.cadastros', ACESSO.manutencao)} />
+                  <DisciplinaSelect multiple value={form.disciplinas_ids || []} onChange={(v) => setForm((f) => ({ ...f, disciplinas_ids: typeof v === 'function' ? v(f.disciplinas_ids || []) : v }))} readOnly={readOnly} podeCriar={can('gerencial.usuarios', ACESSO.manutencao) || can('gerencial.cadastros', ACESSO.manutencao)} />
                   <small className="muted">O professor enxerga essas disciplinas em todas as turmas. Uma disciplina pode ter vários professores.</small>
                 </div>
               )}

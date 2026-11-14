@@ -82,6 +82,7 @@ export interface Estado {
   aluno: { id: number; nome: string; nascimento: string; liberado: boolean };
   letivo: { ano: number; abertura: string | null; encerramento: string | null; divulgacao_valores: string | null };
   precos: { serie: string; turno: string; valor_parcela: number }[];
+  turmas_disponiveis: { serie: string; turno: string }[];
   contatos: { emails: { valor: string; rotulo: string; nome: string }[]; celulares: { e164: string; valor: string; rotulo: string; nome: string }[] };
   opcoes: { chave: string; rotulo: string; nome: string; cpf: string | null; email: string | null; celular: string | null }[];
   docs_aluno: { chave: string; rotulo: string; ok: boolean; arquivo: { id: number; nome: string; mime: string; enviado_em: string } | null }[];

@@ -12,10 +12,10 @@ import './matriculas.css';
 const TITULOS = ['Pré-matrícula', 'Responsável e condições', 'Documentos', 'Assinatura', 'Efetivação'];
 const CHAVES = ['contrato', 'termo1', 'termo2'];
 
-function Seg({ itens, valor, onChange, rotulo, desabilitado }: { itens: { chave: string; label: string }[]; valor: string | null; onChange: (v: string) => void; rotulo: string; desabilitado?: boolean }) {
+function Seg({ itens, valor, onChange, rotulo, desabilitado, bloqueados = [] }: { itens: { chave: string; label: string }[]; valor: string | null; onChange: (v: string) => void; rotulo: string; desabilitado?: boolean; bloqueados?: string[] }) {
   return (
     <div className="seg-group" role="group" aria-label={rotulo}>
-      {itens.map((i) => <button key={i.chave} type="button" className={`seg${valor === i.chave ? ' on' : ''}`} aria-pressed={valor === i.chave} disabled={desabilitado} onClick={() => onChange(i.chave)}>{i.label}</button>)}
+      {itens.map((i) => <button key={i.chave} type="button" className={`seg${valor === i.chave ? ' on' : ''}`} aria-pressed={valor === i.chave} disabled={desabilitado || bloqueados.includes(i.chave)} title={bloqueados.includes(i.chave) ? 'Não há turma neste turno para a série escolhida' : undefined} onClick={() => onChange(i.chave)}>{i.label}</button>)}
     </div>
   );
 }
@@ -38,7 +38,9 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
   const url = `/matriculas/${m.id}`;
   const resp = e.opcoes.find((o) => o.chave === m.responsavel_chave) || null;
   const vf = valorFinal({ valor_parcela: m.valor_parcela, desconto_percentual: Number(f.desconto) || 0 });
-  const series = [...new Set(e.precos.map((p) => p.serie))];
+  const series = [...new Set(e.turmas_disponiveis.map((p) => p.serie))];
+  const igual = (a: string | null, b: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
+  const turnosSem = f.serie ? TURNOS.filter((t) => !e.turmas_disponiveis.some((x) => igual(x.serie, f.serie) && x.turno === t)) : TURNOS.slice();
   const prontoLink = !!(m.serie && m.turno && m.responsavel_chave && m.valor_parcela != null);
   const semValor = !!m.serie && !!m.turno && !(Number(m.valor_parcela) > 0);
 
@@ -46,7 +48,13 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
     setOcupado(true);
     try { const r = await fn(); if (ok) flash.ok(ok); return r; } catch (er) { flash.erro(er); return undefined; } finally { setOcupado(false); }
   }
-  const salvar = async (patch: Record<string, unknown>) => { setE(await api.patch<Estado>(url, patch)); };
+  // as gravações entram numa fila: cliques seguidos são enviados um depois do outro e nenhum sobrescreve o anterior
+  const fila = useRef<Promise<unknown>>(Promise.resolve());
+  const salvar = (patch: Record<string, unknown>) => {
+    const p = fila.current.then(async () => { setE(await api.patch<Estado>(url, patch)); });
+    fila.current = p.catch(() => undefined);
+    return p;
+  };
 
   // grava no servidor o que foi digitado e ainda não foi salvo
   async function flush() {
@@ -71,8 +79,14 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
     setE(await api.post<Estado>(`${url}/avancar`));
   });
 
+  const primeiro = e.aluno.nome.split(' ')[0];
+  const textoPasso1 = m.tipo === 'nova'
+    ? `Matrícula nova de ${primeiro} em ${m.ano}: escolha a série e o turno e registre como a família confirmou. Isso reserva a vaga.`
+    : m.tipo === 'retorno'
+      ? `${primeiro} está voltando ao CSM em ${m.ano}? Registre a intenção e reserve a vaga.`
+      : `A família confirmou que ${primeiro} continua no CSM em ${m.ano}? Registre a intenção e reserve a vaga.`;
   const historias = [
-    `A família confirmou que ${e.aluno.nome.split(' ')[0]} continua no CSM em ${m.ano}? Registre a intenção e reserve a vaga.`,
+    textoPasso1,
     `Quem assina em nome da família e em que condições o plano de ${m.ano} será contratado?`,
     'Confira o que a escola precisa receber e veja os documentos que serão assinados.',
     m.assinatura_modo === 'manual' ? 'Gere os documentos, colha a assinatura à mão e anexe a digitalização.' : 'Envie o link: o responsável assina no próprio celular e tudo fica registrado.',
@@ -103,7 +117,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
       </div>
       {series.length === 0 && <div className="banner-warn"><Icon name="info" size={16} /><span>Nenhum valor cadastrado para {m.ano}. Informe o valor da parcela ao cadastrar a turma em <Link to="/gerencial/cadastros/turmas">Turmas</Link>.</span></div>}
       {semValor && <div className="banner-warn"><Icon name="info" size={16} /><span>Não há valor cadastrado para {m.serie} ({m.turno}) em {m.ano}. <Link to="/gerencial/cadastros/turmas">Informar o valor na turma</Link>.</span></div>}
-      <div><div className="f-lbl">Turno</div><Seg rotulo="Turno" itens={TURNOS.map((t) => ({ chave: t, label: t }))} valor={m.turno} desabilitado={travado || !podeGravar} onChange={(v) => void exec(() => salvar({ turno: v }))} /></div>
+      <div><div className="f-lbl">Turno</div><Seg rotulo="Turno" itens={TURNOS.map((t) => ({ chave: t, label: t }))} valor={m.turno} desabilitado={travado || !podeGravar || !f.serie} bloqueados={turnosSem} onChange={(v) => void exec(() => salvar({ turno: v }))} /></div>
       <div><div className="f-lbl">Como a família confirmou</div><Seg rotulo="Origem da confirmação" itens={ORIGENS.map((t) => ({ chave: t, label: t }))} valor={m.origem} desabilitado={!podeGravar} onChange={(v) => void exec(() => salvar({ origem: v }))} /></div>
       <div className="stack" style={{ maxWidth: 780 }}>
         <div className={`okline${e.aluno.liberado ? '' : ' bad'}`}><Icon name={e.aluno.liberado ? 'check' : 'info'} size={15} />{e.aluno.liberado ? 'Aluno liberado para novas matrículas' : 'Aluno marcado como não liberado para novas matrículas (decisão da secretaria)'}</div>
@@ -165,7 +179,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
           <div className="stack">
             {e.docs_aluno.map((d) => (
               <div key={d.chave} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" style={{ flex: '1 1 220px' }} className={`opt${d.ok ? ' on' : ''}`} aria-pressed={d.ok} disabled={!podeGravar} onClick={() => void exec(() => salvar({ docs_entregues: Object.fromEntries(e.docs_aluno.map((x) => [x.chave, x.chave === d.chave ? !x.ok : x.ok])) }))}>
+                <button type="button" style={{ flex: '1 1 220px' }} className={`opt${d.ok ? ' on' : ''}`} aria-pressed={d.ok} disabled={!podeGravar} onClick={() => void exec(() => salvar({ docs_entregues: { [d.chave]: !d.ok } }))}>
                   <span className="box" aria-hidden="true">{d.ok && <Check />}</span><span style={{ flex: 1 }}>{d.rotulo}{d.arquivo && <small style={{ display: 'block', color: 'var(--muted)', fontSize: 12 }}>{d.arquivo.nome}</small>}</span>
                 </button>
                 {arq(d)}

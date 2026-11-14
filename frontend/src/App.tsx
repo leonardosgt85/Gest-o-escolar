@@ -23,9 +23,12 @@ import MatrizCurricular from './pages/gerencial/MatrizCurricular';
 import Diario from './pages/academico/Diario';
 import DiarioTurma from './pages/academico/DiarioTurma';
 import Ajuda from './pages/Ajuda';
+import AlunoItens from './pages/academico/AlunoItens';
+import ItensCatalogo from './pages/gerencial/ItensCatalogo';
 import ProfessorEscolha from './pages/ProfessorEscolha';
 import Relatorios from './pages/academico/Relatorios';
 import RelatorioDocumentos from './pages/academico/RelatorioDocumentos';
+import AlunoRelatorio from './pages/academico/AlunoRelatorio';
 import RelatorioDiarioMensal from './pages/academico/RelatorioDiarioMensal';
 import MatriculaPagina from './pages/academico/MatriculaPagina';
 
@@ -67,10 +70,12 @@ export default function App() {
         <Route path="academico/diario" element={<Exige perm="academico.diario"><Diario /></Exige>} />
         <Route path="academico/diario/:turmaId/:did" element={<Exige perm="academico.diario"><DiarioTurma /></Exige>} />
         <Route path="academico/relatorios" element={<Exige perm="academico.alunos" alt="academico.diario"><Relatorios /></Exige>} />
+        <Route path="academico/relatorios/aluno" element={<Exige perm="academico.alunos"><AlunoRelatorio /></Exige>} />
         <Route path="academico/relatorios/diario-mensal" element={<Exige perm="academico.diario"><RelatorioDiarioMensal /></Exige>} />
         <Route path="academico/relatorios/documentos" element={<Exige perm="academico.alunos"><RelatorioDocumentos /></Exige>} />
         <Route path="academico/alunos" element={<Exige perm="academico.alunos"><Alunos /></Exige>} />
         <Route path="academico/alunos/novo" element={<Exige perm="academico.alunos.inclusao"><AlunoForm /></Exige>} />
+        <Route path="academico/alunos/:id/itens" element={<Exige perm="academico.itens"><AlunoItens /></Exige>} />
         <Route path="academico/alunos/:id/matriculas" element={<Exige perm="academico.alunos"><AlunoMatriculas /></Exige>} />
         <Route path="academico/matriculas/:id" element={<Exige perm="academico.alunos"><MatriculaPagina /></Exige>} />
         <Route path="academico/alunos/:id" element={<Exige perm="academico.alunos"><AlunoForm /></Exige>} />
@@ -83,6 +88,7 @@ export default function App() {
         <Route path="gerencial/habilitacoes" element={<Exige perm="gerencial.habilitacoes"><Habilitacoes /></Exige>} />
 
         <Route path="gerencial/cadastros" element={<Exige perm="gerencial.cadastros"><Cadastros /></Exige>} />
+        <Route path="gerencial/cadastros/itens" element={<Exige perm="gerencial.cadastros"><ItensCatalogo /></Exige>} />
         <Route path="gerencial/cadastros/disciplinas" element={<Exige perm="gerencial.cadastros"><Disciplinas /></Exige>} />
         <Route path="gerencial/cadastros/turmas" element={<Exige perm="gerencial.cadastros"><Turmas /></Exige>} />
         <Route path="gerencial/cadastros/matriz" element={<Exige perm="gerencial.cadastros"><MatrizCurricular /></Exige>} />

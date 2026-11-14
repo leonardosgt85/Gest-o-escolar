@@ -14,7 +14,8 @@
     "autentique:schema": "node scripts/autentique-introspect.cjs --json",
     "autentique:sandbox": "node scripts/autentique-sandbox-test.cjs",
     "autentique:testar": "node scripts/testar-autentique.js",
-    "seed:turmas": "knex seed:run --specific=002_turmas_matriz_2026.js"
+    "seed:turmas": "knex seed:run --specific=002_turmas_matriz_2026.js",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

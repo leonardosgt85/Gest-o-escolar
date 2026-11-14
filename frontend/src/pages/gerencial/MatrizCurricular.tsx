@@ -66,13 +66,13 @@ export default function MatrizCurricular() {
           { header: 'Dias das aulas', render: (i) => nomeDias(i.dias_semana) },
         ]}
       />
-      {modal && <ItemModal item={modal.i} ano={ano} serieInicial={serie} series={series} onClose={() => setModal(null)} onSaved={() => { setModal(null); flash.ok('Matriz gravada.'); void carregar(); }} />}
+      {modal && <ItemModal item={modal.i} ano={ano} serieInicial={serie} series={series} existentes={lista} onEditar={(i) => setModal({ i })} onClose={() => setModal(null)} onSaved={() => { setModal(null); flash.ok('Matriz gravada.'); void carregar(); }} />}
       {copiar && <CopiarModal para={ano} onClose={() => setCopiar(false)} onOk={(m) => { setCopiar(false); flash.ok(m); void carregar(); }} />}
     </>
   );
 }
 
-function ItemModal({ item, ano, serieInicial, series, onClose, onSaved }: { item?: Item; ano: string; serieInicial: string; series: string[]; onClose: () => void; onSaved: () => void }) {
+function ItemModal({ item, ano, serieInicial, series, existentes, onEditar, onClose, onSaved }: { item?: Item; ano: string; serieInicial: string; series: string[]; existentes: Item[]; onEditar: (i: Item) => void; onClose: () => void; onSaved: () => void }) {
   const [serie, setSerie] = useState(item?.serie ?? serieInicial);
   const [disc, setDisc] = useState<number[]>(item ? [item.disciplina_id] : []);
   const [ch, setCh] = useState(String(item?.carga_horaria ?? ''));
@@ -80,15 +80,18 @@ function ItemModal({ item, ano, serieInicial, series, onClose, onSaved }: { item
   const [dias, setDias] = useState<number[]>(item?.dias_semana ?? []);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  // "Adicionar" nunca sobrescreve: se a disciplina já está na série, oferece editar a linha existente
+  const jaExiste = !item && disc[0] ? existentes.find((x) => x.disciplina_id === disc[0] && x.serie.trim().toLowerCase() === serie.trim().toLowerCase()) : undefined;
   async function gravar() {
     setErro(''); setSalvando(true);
-    try { await api.put('/cadastros/matriz', { ano: Number(ano), serie, disciplina_id: disc[0], carga_horaria: ch, aulas_semana: aulas, dias_semana: dias }); onSaved(); }
+    try { await api.put('/cadastros/matriz', { ano: Number(ano), serie, disciplina_id: disc[0], carga_horaria: ch, aulas_semana: aulas, dias_semana: dias, novo: !item }); onSaved(); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setSalvando(false); }
   }
   return (
     <Modal title={item ? `Editar na matriz ${ano}` : `Adicionar à matriz ${ano}`} onClose={onClose}
-      footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn btn-primary" disabled={salvando} onClick={() => void gravar()}>{salvando ? 'Gravando…' : 'Gravar'}</button></>}>
+      footer={<><button className="btn" onClick={onClose}>Cancelar</button><button className="btn btn-primary" disabled={salvando || !!jaExiste} onClick={() => void gravar()}>{salvando ? 'Gravando…' : 'Gravar'}</button></>}>
       <Alert>{erro}</Alert>
+      {jaExiste && <Alert kind="info">Esta disciplina já está na matriz de {jaExiste.serie} ({jaExiste.aulas_semana ?? '—'} aulas/semana). <button type="button" className="lk" onClick={() => onEditar(jaExiste)}>Editar a existente</button></Alert>}
       <div className="grid">
         <div className="field span-4"><label htmlFor="m-serie">Série</label>
           <input id="m-serie" className="input" list="m-series" placeholder="Ex.: 8º Ano" disabled={!!item} value={serie} onChange={(e) => setSerie(e.target.value)} />
@@ -99,7 +102,7 @@ function ItemModal({ item, ano, serieInicial, series, onClose, onSaved }: { item
         <div className="field span-2"><label htmlFor="m-aulas">Aulas por semana</label><input id="m-aulas" className="input" inputMode="numeric" value={aulas} onChange={(e) => setAulas(e.target.value.replace(/\D/g, ''))} /></div>
         <div className="field span-4"><label>Dias da semana das aulas</label>
           <div className="dias" role="group" aria-label="Dias da semana">
-            {DIAS.map(([n, r]) => <button key={n} type="button" className="chip" aria-pressed={dias.includes(n)} onClick={() => setDias(dias.includes(n) ? dias.filter((x) => x !== n) : [...dias, n])}>{r}</button>)}
+            {DIAS.map(([n, r]) => <button key={n} type="button" className="chip" aria-pressed={dias.includes(n)} onClick={() => setDias((p) => (p.includes(n) ? p.filter((x) => x !== n) : [...p, n]))}>{r}</button>)}
           </div>
           <small className="muted">Esses dias geram as colunas do diário de classe. Pode ficar em branco por enquanto.</small>
         </div>

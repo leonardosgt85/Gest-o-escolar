@@ -5,6 +5,7 @@ import { Crumbs } from '../../components/ui';
 
 // Hub dos relatórios acadêmicos: um card por relatório. Novos relatórios entram nesta lista.
 const RELATORIOS = [
+  { to: '/academico/relatorios/aluno', titulo: 'Relatório do aluno', descricao: 'Escolha o aluno e veja a vida escolar completa: matrícula, notas, frequência, material e uniformes, documentos e responsáveis, com PDF de cada bloco.', icone: 'alunos' as const, perm: 'academico.alunos' },
   { to: '/academico/relatorios/documentos', titulo: 'Documentos do aluno', descricao: 'Documentos gerados automaticamente com os dados de cada aluno, a partir de modelos da escola.', icone: 'fileDown' as const, perm: 'academico.alunos' },
   { to: '/academico/relatorios/diario-mensal', titulo: 'Diário de classe mensal', descricao: 'Chamada do mês, notas do bimestre e conteúdo ministrado, por turma e disciplina, em PDF para imprimir.', icone: 'diario' as const, perm: 'academico.diario' },
 ];

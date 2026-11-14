@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PizZip from 'pizzip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { etapaDe, etapaGeral } from './series.js';
 import { db } from '../db.js';
 import { HttpError } from '../util.js';
 import { carregar } from './documentosService.js';
@@ -32,16 +33,7 @@ function dataBr(iso) {
 const maiusc = (s) => txt(s).toLocaleUpperCase('pt-BR');
 const dataIso = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : txt(v).slice(0, 10));
 
-function etapaDe(serie) {
-  const s = txt(serie).toLowerCase();
-  if (/m[eé]dio/.test(s)) return 'ENSINO MÉDIO';
-  if (/infantil|maternal|jardim|pré|pre/.test(s)) return 'EDUCAÇÃO INFANTIL';
-  const n = Number(/(\d+)/.exec(s)?.[1]);
-  if (n >= 1 && n <= 5) return 'ENSINO FUNDAMENTAL I';
-  if (n >= 6 && n <= 9) return 'ENSINO FUNDAMENTAL II';
-  return 'ENSINO FUNDAMENTAL II';
-}
-const TURNOS = { manhã: 'MATUTINO', manha: 'MATUTINO', tarde: 'VESPERTINO', integral: 'INTEGRAL' };
+const TURNOS = { manhã: 'MATUTINO', manha: 'MATUTINO', matutino: 'MATUTINO', tarde: 'VESPERTINO', vespertino: 'VESPERTINO', integral: 'INTEGRAL' };
 
 /* ---------- dados sugeridos para a tela ---------- */
 export async function sugestoes(alunoId) {
@@ -68,7 +60,10 @@ export async function sugestoes(alunoId) {
   return {
     aluno: { id: aluno.id, nome: aluno.nome_completo, matricula: aluno.matricula || '' },
     matricula: mat ? { ano: mat.ano, serie, turno: mat.turno, status: mat.status } : null,
-    conclusao: { ...base, serie_concluida: serie ? `${serie} do ${etapaDe(serie) === 'ENSINO MÉDIO' ? 'Ensino Médio' : 'Ensino Fundamental'}` : '', ano_letivo: String(ano - (mat?.status === 'ativa' ? 0 : 0)) },
+    avisos: {
+      conclusao: mat && mat.status !== 'concluida' ? `A matrícula ${mat.ano} ainda não foi concluída (situação: ${mat.status === 'ativa' ? 'em curso' : mat.status}). O atestado de conclusão só vale depois do fim do ano letivo.` : '',
+    },
+    conclusao: { ...base, serie_concluida: serie ? `${serie}${etapaGeral(serie) ? ` do ${etapaGeral(serie)}` : ''}` : '', ano_letivo: String(ano - (mat?.status === 'ativa' ? 0 : 0)) },
     escolaridade: {
       nome: base.nome,
       matricula_num: txt(aluno.matricula),
@@ -82,6 +77,7 @@ export async function sugestoes(alunoId) {
     historico: {
       ...base,
       obs: '',
+      etapa_titulo: (etapaGeral(serie) || 'Ensino Fundamental').toUpperCase(),
       secretario: 'Sérgio Araújo Fleury',
       diretora: 'Valmeria Victor Fleury',
     },
@@ -216,7 +212,7 @@ async function historicoPdf(d) {
   let cy = y - 12;
   for (const [t, f, s] of cab) { page.drawText(limpa(t), { x: 130, y: cy, size: s, font: f }); cy -= s + 4.5; }
   y -= 82;
-  centro('HISTÓRICO ESCOLAR DO ENSINO FUNDAMENTAL', L, y - 10, W, 14, bold);
+  centro(`HISTÓRICO ESCOLAR DO ${txt(d.etapa_titulo) || 'ENSINO FUNDAMENTAL'}`, L, y - 10, W, 14, bold);
   y -= 22;
 
   // identificação

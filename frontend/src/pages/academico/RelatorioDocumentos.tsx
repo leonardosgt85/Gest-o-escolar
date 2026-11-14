@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, qs } from '../../api';
+import { useSearchParams } from 'react-router-dom';
 import { Alert, Crumbs, useFlash } from '../../components/ui';
 import Icon from '../../components/Icon';
 
 type Tipo = 'conclusao' | 'escolaridade' | 'historico';
 type D = Record<string, any>;
 interface AlunoLinha { id: number; nome_completo: string; matricula: string | null; data_nascimento: string | null }
-interface Sug { aluno: { id: number; nome: string; matricula: string }; matricula: { ano: number; serie: string; turno: string; status: string } | null; conclusao: D; escolaridade: D; historico: D; disciplinas: string[] }
+interface Sug { aluno: { id: number; nome: string; matricula: string }; matricula: { ano: number; serie: string; turno: string; status: string } | null; conclusao: D; escolaridade: D; historico: D; disciplinas: string[]; avisos?: { conclusao?: string } }
 
 const DOCS: { chave: Tipo; titulo: string; texto: string; formato: string }[] = [
   { chave: 'escolaridade', titulo: 'Atestado de Escolaridade', texto: 'Declara que o aluno está matriculado e frequenta as aulas.', formato: 'Word (.docx)' },
@@ -33,6 +34,7 @@ export default function RelatorioDocumentos() {
   const [ocupado, setOcupado] = useState(false);
   const [gerado, setGerado] = useState<string | null>(null);
   const timer = useRef<number>();
+  const [sp] = useSearchParams();
 
   useEffect(() => {
     window.clearTimeout(timer.current);
@@ -50,6 +52,9 @@ export default function RelatorioDocumentos() {
       setTipo(null); setGerado(null); setPasso(2);
     } catch (e) { flash.erro(e); }
   }
+
+  // Vindo do Relatório do aluno (?aluno=ID): já abre com o aluno escolhido.
+  useEffect(() => { const id = Number(sp.get('aluno')); if (id) void escolherAluno({ id } as AlunoLinha); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function escolherTipo(t: Tipo) {
     if (!sug) return;
@@ -150,6 +155,8 @@ export default function RelatorioDocumentos() {
         <div className="card">
           <h2 className="rd-h">{doc?.titulo}</h2>
           <p className="muted" style={{ marginTop: 0 }}>Os dados vieram do cadastro. Confira e corrija o que precisar: só este documento muda, o cadastro não.</p>
+
+          {tipo === 'conclusao' && sug.avisos?.conclusao && <Alert kind="info">{sug.avisos.conclusao}</Alert>}
 
           {tipo === 'escolaridade' && (
             <div className="rd-grid">

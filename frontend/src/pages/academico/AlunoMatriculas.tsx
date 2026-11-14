@@ -65,6 +65,7 @@ export default function AlunoMatriculas() {
           <div className="sub">Código {a.id} · Nascimento {fmtData(a.nascimento)}{a.responsavel ? ` · Responsável financeiro: ${a.responsavel}` : ''}</div>
         </div>
         <button className="btn" onClick={() => setVer(true)}><Icon name="info" size={16} /> Informações</button>
+        {can('academico.itens', 1) && <button className="btn" onClick={() => nav(`/academico/alunos/${a.id}/itens`)}><Icon name="fileDown" size={16} /> Material e uniformes</button>}
         <button className="btn" onClick={() => nav(`/academico/alunos/${a.id}`)}><Icon name="edit" size={16} /> Abrir cadastro</button>
       </div>
 

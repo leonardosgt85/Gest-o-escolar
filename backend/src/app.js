@@ -17,6 +17,7 @@ import matriculasRoutes from './routes/matriculas.js';
 import relatoriosRoutes from './routes/relatorios.js';
 import cadastrosRoutes from './routes/cadastros.js';
 import diarioRoutes from './routes/diario.js';
+import itensRoutes from './routes/itens.js';
 import { assinaturaWebhookValida } from './services/autentique.js';
 import { processarWebhook } from './services/matriculasService.js';
 import { OPCOES } from './fields.js';
@@ -51,6 +52,7 @@ export function createApp() {
   app.use('/api/relatorios', requireAuth, relatoriosRoutes);
   app.use('/api/cadastros', requireAuth, cadastrosRoutes);
   app.use('/api/diario', requireAuth, diarioRoutes);
+  app.use('/api/itens', requireAuth, itensRoutes);
   app.use('/api/configuracoes', requireAuth, configuracoesRoutes);
   app.use('/api/portal', portalRoutes); // público: o token do link é a credencial
 

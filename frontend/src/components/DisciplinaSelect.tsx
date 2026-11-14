@@ -33,7 +33,7 @@ export function DisciplinaModal({ disciplina, onClose, onSaved }: { disciplina?:
 
 /** Escolha de disciplina(s) com "+ Nova disciplina": cadastra na hora e já seleciona, sem sair da tela. */
 export default function DisciplinaSelect({ value, onChange, multiple, readOnly, podeCriar = true, rotulo = 'Disciplinas' }: {
-  value: number[]; onChange: (v: number[]) => void; multiple?: boolean; readOnly?: boolean; podeCriar?: boolean; rotulo?: string;
+  value: number[]; onChange: (v: number[] | ((anterior: number[]) => number[])) => void; multiple?: boolean; readOnly?: boolean; podeCriar?: boolean; rotulo?: string;
 }) {
   const [lista, setLista] = useState<Disciplina[]>([]);
   const [novo, setNovo] = useState(false);
@@ -43,7 +43,7 @@ export default function DisciplinaSelect({ value, onChange, multiple, readOnly, 
   const alternar = (id: number) => {
     if (readOnly) return;
     if (!multiple) return onChange([id]);
-    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+    onChange((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
   return (
     <div role="group" aria-label={rotulo}>
@@ -54,7 +54,7 @@ export default function DisciplinaSelect({ value, onChange, multiple, readOnly, 
         {!readOnly && podeCriar && <button type="button" className="chip novo" onClick={() => setNovo(true)}>+ Nova disciplina</button>}
       </div>
       {novo && (
-        <DisciplinaModal onClose={() => setNovo(false)} onSaved={(d) => { setLista((l) => [...l, d].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))); onChange(multiple ? [...value, d.id] : [d.id]); setNovo(false); }} />
+        <DisciplinaModal onClose={() => setNovo(false)} onSaved={(d) => { setLista((l) => [...l, d].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))); onChange(multiple ? (prev) => (prev.includes(d.id) ? prev : [...prev, d.id]) : [d.id]); setNovo(false); }} />
       )}
     </div>
   );

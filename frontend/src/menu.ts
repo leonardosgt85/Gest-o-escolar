@@ -37,6 +37,7 @@ export const MENU: MenuModule[] = [
     items: [
       { label: 'Alunos', descricao: 'Ficha completa do aluno: dados, endereço, responsáveis, documentos, matrículas e processo seletivo.', icone: 'alunos', to: '/academico/alunos', perm: 'academico.alunos' },
       { label: 'Documentos do aluno', descricao: 'Atestados de escolaridade e conclusão e histórico escolar, gerados com os dados de cada aluno.', icone: 'fileDown', to: '/academico/relatorios/documentos', perm: 'academico.alunos' },
+      { label: 'Relatórios', descricao: 'Relatório do aluno (vida escolar completa) e demais relatórios da secretaria.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos' },
       { label: 'Responsáveis', descricao: 'Pais, mães e responsáveis reutilizáveis entre vários alunos.', icone: 'pessoas', to: '/academico/pessoas', perm: 'academico.pessoas', oculto: true },
       { label: 'Dashboard', descricao: 'Indicadores e visão geral da secretaria.', icone: 'dashboard', to: '/academico/dashboard', perm: 'academico.alunos', breve: true },
     ],
@@ -62,6 +63,7 @@ export const MENU: MenuModule[] = [
     items: [
       { label: 'Turmas e ano letivo', descricao: 'Abrir o ano e a matrícula, turmas por série e turno com o valor da parcela, e enturmação dos alunos.', icone: 'grupos', to: '/gerencial/cadastros/turmas', perm: 'gerencial.cadastros' },
       { label: 'Matriz curricular', descricao: 'Disciplinas de cada série, carga horária e dias da semana das aulas.', icone: 'diario', to: '/gerencial/cadastros/matriz', perm: 'gerencial.cadastros' },
+      { label: 'Material e uniformes', descricao: 'Itens vendidos ao aluno (material didático, uniformes) e o valor de cada um por série.', icone: 'cadastros', to: '/gerencial/cadastros/itens', perm: 'gerencial.cadastros' },
       { label: 'Disciplinas e professores', descricao: 'Componentes curriculares da escola e os professores de cada um.', icone: 'cadastros', to: '/gerencial/cadastros/disciplinas', perm: 'gerencial.cadastros' },
     ],
   },

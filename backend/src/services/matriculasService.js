@@ -6,6 +6,7 @@ import { HttpError, formatarCpf } from '../util.js';
 import { carregar, gerarArquivos, padrao, ROTULOS, telefone, dadosColegio } from './documentosService.js';
 import * as autentique from './autentique.js';
 import { precoDe, precosDoAno } from './precosService.js';
+import { chaveTxt, normTxt } from './series.js';
 
 export const DOCS_ALUNO = [
   ['certidao', 'Certidão de nascimento'],
@@ -62,12 +63,14 @@ export async function historicoDoAluno(alunoId) {
   };
 }
 
-// Sem matrícula anterior: aluno cadastrado depois da abertura do ano é "nova"; os já existentes (importados) são "rematrícula".
+// Sem matrícula anterior: aluno com nº de matrícula (importado do sistema antigo) ou cadastrado antes da abertura do ano é "rematrícula";
+// aluno novo (sem nº de matrícula) é "nova".
 export const TIPOS_MATRICULA = ['nova', 'rematricula', 'retorno'];
 export function tipoSemAnterior(aluno, letivo) {
+  if (String(aluno.matricula ?? '').trim()) return 'rematricula';
   const cad = aluno.created_at ? new Date(aluno.created_at) : null;
   const ab = letivo?.abertura ? new Date(letivo.abertura) : null;
-  return cad && ab && cad >= ab ? 'nova' : 'rematricula';
+  return cad && ab && cad < ab ? 'rematricula' : 'nova';
 }
 
 export async function iniciar(alunoId, ano, usuarioId, statusInicial, tipoEscolhido) {
@@ -177,6 +180,7 @@ export async function estado(id) {
     aluno: { id: aluno.id, nome: aluno.nome_completo, nascimento: aluno.data_nascimento, liberado: aluno.liberado_novas_matriculas !== 'Não' },
     letivo,
     precos: await precosDoAno(m.ano),
+    turmas_disponiveis: [...new Map((await turmasDoAno(m.ano)).map((t) => [`${chaveTxt(t.serie)}|${t.turno}`, { serie: t.serie, turno: t.turno }])).values()],
     opcoes,
     contatos: { emails, celulares },
     docs_aluno: DOCS_ALUNO.map(([chave, rotulo]) => ({ chave, rotulo, ok: okDoc(chave), arquivo: anexosAluno[chave] ? { id: anexosAluno[chave].id, nome: anexosAluno[chave].arquivo, mime: anexosAluno[chave].mime, enviado_em: anexosAluno[chave].created_at } : null })),
@@ -196,6 +200,14 @@ export async function estado(id) {
     driver: autentique.modo(),
   };
 }
+
+/* ---------- turmas disponíveis (série + turno) ---------- */
+async function turmasDoAno(ano, trx = db) {
+  return trx('turmas').where({ ano, ativo: true }).select('serie', 'turno');
+}
+const turnosDaSerie = (turmas, serie) => [...new Set(turmas.filter((t) => chaveTxt(t.serie) === chaveTxt(serie)).map((t) => t.turno))];
+const serieDasTurmas = (turmas, serie) => turmas.find((t) => chaveTxt(t.serie) === chaveTxt(serie))?.serie ?? null;
+const msgSemTurma = (serie, turno, ano) => `Não há turma ativa de ${serie}${turno ? ` no turno ${turno}` : ''} em ${ano}. Cadastre a turma em Estrutura da escola > Turmas e ano letivo.`;
 
 /* ---------- edição dos dados ---------- */
 export async function atualizar(id, body, usuarioId) {
@@ -235,9 +247,10 @@ export async function atualizar(id, body, usuarioId) {
     up.desconto_percentual = n;
   }
   if ('docs_entregues' in body) {
+    // só os documentos enviados são alterados; os demais ficam como estão (cliques seguidos não se sobrescrevem)
     const d = {};
-    for (const [k] of DOCS_ALUNO) d[k] = !!body.docs_entregues?.[k];
-    up.docs_entregues = JSON.stringify(d);
+    for (const [k] of DOCS_ALUNO) if (body.docs_entregues && k in body.docs_entregues) d[k] = !!body.docs_entregues[k];
+    if (Object.keys(d).length) up.docs_delta = d;
   }
   if ('responsavel_chave' in body) {
     const { responsaveis } = await carregar(m.aluno_id);
@@ -266,12 +279,28 @@ export async function atualizar(id, body, usuarioId) {
   }
   if (!Object.keys(up).length) return;
   if ('serie' in up || 'turno' in up) {
-    // o valor da parcela vem das turmas do ano (série + turno)
-    const serie = 'serie' in up ? up.serie : m.serie;
-    const turno = 'turno' in up ? up.turno : m.turno;
+    // série e turno precisam existir como turma ativa do ano; o valor da parcela vem dessas turmas
+    const turmas = await turmasDoAno(m.ano);
+    let serie = 'serie' in up ? up.serie : m.serie;
+    let turno = 'turno' in up ? up.turno : m.turno;
+    if (serie) {
+      const canonica = serieDasTurmas(turmas, serie);
+      if (!canonica) throw new HttpError(400, msgSemTurma(normTxt(serie), null, m.ano));
+      serie = canonica; up.serie = canonica;
+      const turnos = turnosDaSerie(turmas, serie);
+      if (turno && !turnos.includes(turno)) {
+        if ('turno' in up) throw new HttpError(400, msgSemTurma(serie, turno, m.ano));
+        turno = null; up.turno = null; // trocou de série e o turno antigo não existe nela: escolhe de novo
+      }
+    }
     up.valor_parcela = serie && turno ? await precoDe(m.ano, serie, turno) : null;
   }
-  await db('matriculas').where({ id }).update({ ...up, updated_at: agora() });
+  const { docs_delta: delta, ...cols } = up;
+  await db.transaction(async (trx) => {
+    // o JSON é mesclado no próprio banco, então duas gravações simultâneas não perdem marcações uma da outra
+    const extra = delta ? { docs_entregues: trx.raw("coalesce(docs_entregues, '{}'::jsonb) || ?::jsonb", [JSON.stringify(delta)]) } : {};
+    await trx('matriculas').where({ id }).update({ ...cols, ...extra, updated_at: agora() });
+  });
 }
 
 export async function avancar(id, usuarioId) {
@@ -280,11 +309,12 @@ export async function avancar(id, usuarioId) {
   const e = await estado(id);
   const de = m.passo;
   if (de === 1) {
-    if (!m.serie || !m.turno) throw new HttpError(400, 'Informe a série e o turno de 2027 antes de continuar.'.replace('2027', String(m.ano)));
+    if (!m.serie || !m.turno) throw new HttpError(400, `Informe a série e o turno de ${m.ano} antes de continuar.`);
+    if (!turnosDaSerie(await turmasDoAno(m.ano), m.serie).includes(m.turno)) throw new HttpError(400, msgSemTurma(m.serie, m.turno, m.ano));
   }
   if (de === 2) {
     if (!m.responsavel_id) throw new HttpError(400, 'Escolha quem assina em nome da família.');
-    if (!(Number(m.valor_parcela) > 0)) throw new HttpError(400, `Não há valor cadastrado para ${m.serie} (${m.turno}) em ${m.ano}. Informe o valor na turma (Gerencial > Cadastros > Turmas).`);
+    if (!(Number(m.valor_parcela) > 0)) throw new HttpError(400, `Não há valor cadastrado para ${m.serie} (${m.turno}) em ${m.ano}. Informe o valor na turma (Estrutura da escola > Turmas e ano letivo).`);
     if (!m.parcelas || !m.dia_vencimento) throw new HttpError(400, 'Preencha parcelas e vencimento.');
   }
   if (de === 4 && !e.checks.assinado) throw new HttpError(409, 'A assinatura ainda não foi concluída.');
@@ -608,6 +638,11 @@ export async function efetivar(id, usuarioId) {
   if (f.length) throw new HttpError(409, `Falta concluir: ${f.join(', ')}.`);
   await db.transaction(async (trx) => {
     await trx('matriculas').where({ id }).update({ status: 'ativa', passo: 5, passo_max: 5, efetivada_em: agora(), efetivada_por: usuarioId, updated_at: agora() });
+    // nº de matrícula do aluno (AAAA + código com 6 dígitos), gerado na primeira efetivação; nunca sobrescreve o existente
+    const al = await trx('alunos').where({ id: e.matricula.aluno_id }).forUpdate().first();
+    if (al && !String(al.matricula ?? '').trim()) {
+      await trx('alunos').where({ id: al.id }).update({ matricula: `${e.matricula.ano}${String(al.id).padStart(6, '0')}` });
+    }
     await trx('matricula_eventos').insert({ matricula_id: id, tipo: 'efetivada', titulo: 'Matrícula efetivada', detalhe: 'Contrato assinado, documentos entregues e 1ª parcela confirmada.', usuario_id: usuarioId });
   });
 }

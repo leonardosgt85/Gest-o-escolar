@@ -1,6 +1,8 @@
 // Cadastros de apoio ao diário: disciplinas, turmas e matriz curricular.
 import { Router } from 'express';
 import { db } from '../db.js';
+import { serieNormalizada } from '../services/seriesDb.js';
+import { normTxt } from '../services/series.js';
 import { HttpError, likeSeguro, semAcento, semAcentoSql, wrap } from '../util.js';
 
 const router = Router();
@@ -102,6 +104,17 @@ function validarTurma(b) {
   if (lim !== null && !(Number.isInteger(lim) && lim >= 1 && lim <= 500)) throw new HttpError(400, 'Limite de alunos inválido (use um número inteiro de 1 a 500 ou deixe vazio para sem limite).');
   return { ano, serie, nome: nome.slice(0, 20), turno: b.turno, valor_parcela: valor === null ? null : Math.round(valor * 100) / 100, limite_alunos: lim };
 }
+// série canônica + nome sem espaços sobrando; recusa duplicata que só difere por maiúsculas/espaços
+async function prepararTurma(b, idAtual) {
+  const d = validarTurma(b);
+  d.serie = await serieNormalizada(d.serie);
+  d.nome = normTxt(d.nome).slice(0, 20);
+  const dup = await db('turmas').where({ ano: d.ano, turno: d.turno })
+    .whereRaw('lower(btrim(serie)) = lower(?)', [d.serie]).whereRaw('lower(btrim(nome)) = lower(?)', [d.nome])
+    .modify((q) => idAtual && q.whereNot({ id: idAtual })).first();
+  if (dup) throw new HttpError(409, `Já existe a turma ${dup.serie} ${dup.nome} (${dup.turno}) em ${d.ano}.`);
+  return d;
+}
 const erroDup = (e) => { if (e.code === '23505') throw new HttpError(409, 'Já existe uma turma com este ano, série, nome e turno.'); throw e; };
 
 // copia as turmas (sem alunos) de outro ano, aplicando reajuste no valor da parcela
@@ -123,12 +136,12 @@ router.post('/turmas/copiar-ano', gravar, wrap(async (req, res) => {
 }));
 
 router.post('/turmas', gravar, wrap(async (req, res) => {
-  const d = validarTurma(req.body);
+  const d = await prepararTurma(req.body);
   const [nova] = await db('turmas').insert(d).returning('*').catch(erroDup);
   res.status(201).json(nova);
 }));
 router.put('/turmas/:id', gravar, wrap(async (req, res) => {
-  const d = validarTurma(req.body);
+  const d = await prepararTurma(req.body, Number(req.params.id));
   if (req.body.ativo !== undefined) d.ativo = !!req.body.ativo;
   if (d.limite_alunos) {
     const ocup = await ocupacao(req.params.id);
@@ -200,10 +213,15 @@ router.get('/matriz', ler, wrap(async (req, res) => {
 router.put('/matriz', gravar, wrap(async (req, res) => {
   const b = req.body;
   const ano = inteiro(b.ano, 'Ano', { min: 2000, max: 2100 });
-  const serie = txt(b.serie);
+  const serie = await serieNormalizada(b.serie);
   if (!ano || !serie) throw new HttpError(400, 'Informe ano e série.');
   const disciplina_id = inteiro(b.disciplina_id, 'Disciplina');
-  if (!disciplina_id || !(await db('disciplinas').where({ id: disciplina_id }).first())) throw new HttpError(400, 'Escolha a disciplina.');
+  const disc = disciplina_id ? await db('disciplinas').where({ id: disciplina_id }).first() : null;
+  if (!disc) throw new HttpError(400, 'Escolha a disciplina.');
+  if (b.novo) { // "Adicionar" nunca sobrescreve: se já existe, orienta a editar
+    const ja = await db('matriz_curricular').where({ ano, disciplina_id }).whereRaw('lower(btrim(serie)) = lower(?)', [serie]).first();
+    if (ja) throw new HttpError(409, `${disc.nome} já está na matriz de ${serie} em ${ano}. Edite a linha existente em vez de adicionar de novo.`);
+  }
   const dias = [...new Set((Array.isArray(b.dias_semana) ? b.dias_semana : []).map(Number))].filter((n) => n >= 1 && n <= 6).sort();
   const dados = {
     ano, serie, disciplina_id,
