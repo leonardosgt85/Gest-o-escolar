@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { api, qs } from '../../api';
 import { useAuth } from '../../auth';
 import PessoaCombo from '../../components/PessoaCombo';
@@ -150,13 +150,14 @@ export default function AlunoForm() {
   const [aba, setAba] = useState(0);
   const [form, setForm] = useState<Form>({ nacionalidade: 'Brasileira', liberado_novas_matriculas: 'Sim', processo_seletivo: {} });
   const [salvando, setSalvando] = useState(false);
+  const [naoAchou, setNaoAchou] = useState(false);
   const [irmao, setIrmao] = useState(false);
   const flash = useFlash();
   const arquivo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (novo) return;
-    api.get(`/alunos/${id}`).then((a) => setForm({ ...a, processo_seletivo: a.processo_seletivo || {} })).catch(flash.erro);
+    api.get(`/alunos/${id}`).then((a) => setForm({ ...a, processo_seletivo: a.processo_seletivo || {} })).catch((e) => { if ((e as { status?: number })?.status === 404) setNaoAchou(true); else flash.erro(e); });
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function gravar() {
@@ -203,6 +204,14 @@ export default function AlunoForm() {
     { name: 'tipo_resp_financ', label: 'Tipo Resp. Financ', type: 'select', options: 'tipo_resp_financ', span: 2, hint: 'O responsável financeiro definitivo é definido por matrícula (módulo futuro).' },
   ];
 
+  if (naoAchou) {
+    return (
+      <>
+        <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: 'Aluno' }]} />
+        <div className="card empty" role="alert"><p>Aluno não encontrado.</p><Link className="btn" to="/academico/alunos">Voltar para a lista</Link></div>
+      </>
+    );
+  }
   return (
     <>
       <div className="page-title">

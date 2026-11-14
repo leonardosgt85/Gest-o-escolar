@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { buscarCep, getPath, maskCep, maskCpf, maskFone, setPath, UFS, useOpcoes } from '../lib/utils';
 
@@ -18,6 +18,9 @@ export function Crumbs({ items }: { items: { label: string; to?: string }[] }) {
 
 /* ---------- Modal ---------- */
 export function Modal({ title, onClose, children, footer, wide }: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  // devolve o foco ao botão que abriu o modal quando ele fecha
+  const aberto = useRef<Element | null>(typeof document !== 'undefined' ? document.activeElement : null);
+  useEffect(() => () => { const el = aberto.current as HTMLElement | null; if (el && document.contains(el)) el.focus(); }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', h);
@@ -42,7 +45,8 @@ export function Tabs({ tabs, active, onChange }: { tabs: string[]; active: numbe
   return (
     <div className="tabs" role="tablist">
       {tabs.map((t, i) => (
-        <button key={t} role="tab" className={`tab${i === active ? ' active' : ''}`} onClick={() => onChange(i)}>
+        <button key={t} role="tab" aria-selected={i === active} tabIndex={i === active ? 0 : -1} className={`tab${i === active ? ' active' : ''}`} onClick={() => onChange(i)}
+          onKeyDown={(e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); const n = (i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length; onChange(n); (e.currentTarget.parentElement?.children[n] as HTMLElement)?.focus(); } }}>
           {t}
         </button>
       ))}
@@ -143,23 +147,30 @@ export type FormState = Record<string, any>;
 
 export function Field({ def, value, onChange, opcoes }: { def: FieldDef; value: any; onChange: (v: any) => void; opcoes: Record<string, string[]> }) {
   const t = def.type || 'text';
+  const fid = useId();
+  const ehDdd = def.name.split('.').pop() === 'ddd';
+  const ehNasc = def.name === 'data_nascimento';
   const lista = t === 'uf' ? UFS : typeof def.options === 'string' ? opcoes[def.options] || [] : def.options || [];
   const v = value ?? '';
   let input: ReactNode;
   if (t === 'select' || t === 'uf') {
     input = (
-      <select className="input" value={v} disabled={def.readOnly} onChange={(e) => onChange(e.target.value)}>
+      <select id={fid} className="input" value={v} disabled={def.readOnly} onChange={(e) => onChange(e.target.value)}>
         <option value="">Selecionar</option>
         {lista.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     );
   } else if (t === 'textarea') {
-    input = <textarea className="input" value={v} readOnly={def.readOnly} onChange={(e) => onChange(e.target.value)} />;
+    input = <textarea id={fid} className="input" value={v} readOnly={def.readOnly} onChange={(e) => onChange(e.target.value)} />;
   } else {
-    const mask = t === 'cpf' ? maskCpf : t === 'cep' ? maskCep : t === 'fone' ? maskFone : null;
+    const mask = t === 'cpf' ? maskCpf : t === 'cep' ? maskCep : t === 'fone' ? maskFone : ehDdd ? (s: string) => s.replace(/\D/g, '').slice(0, 2) : null;
     input = (
       <input
+        id={fid}
         className="input"
+        inputMode={ehDdd ? 'numeric' : undefined}
+        min={ehNasc ? '1900-01-01' : undefined}
+        max={ehNasc ? new Date().toISOString().slice(0, 10) : undefined}
         type={t === 'date' ? 'date' : t === 'number' ? 'number' : t === 'password' ? 'password' : t === 'email' ? 'email' : 'text'}
         step={t === 'number' ? '0.01' : undefined}
         value={v}
@@ -173,7 +184,7 @@ export function Field({ def, value, onChange, opcoes }: { def: FieldDef; value: 
   }
   return (
     <div className={`field span-${def.span || 1}`}>
-      <label>{def.label}{def.required ? ' *' : ''}</label>
+      <label htmlFor={fid}>{def.label}{def.required ? ' *' : ''}</label>
       {input}
       {def.hint && <div className="hint">{def.hint}</div>}
     </div>

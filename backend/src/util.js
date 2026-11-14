@@ -66,3 +66,12 @@ export const semAcento = (s) =>
     .replace(/[úùûü]/g, 'u')
     .replace(/ç/g, 'c')
     .replace(/ñ/g, 'n');
+
+export const emailValido = (e) => /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(String(e || '').trim());
+/** Escapa % _ \ para uso em LIKE (a busca trata esses caracteres como texto). */
+export const likeSeguro = (s) => String(s ?? '').replace(/[\\%_]/g, (c) => `\\${c}`);
+/** Valida e-mail (se informado), DDD numérico de 2 dígitos (se informado). */
+export function validarContato(dados) {
+  if (dados.email && !emailValido(dados.email)) throw new HttpError(400, 'E-mail inválido. Use o formato nome@dominio.com.');
+  if (dados.ddd && !/^\d{2}$/.test(String(dados.ddd).trim())) throw new HttpError(400, 'DDD inválido: informe 2 números (ex.: 65).');
+}

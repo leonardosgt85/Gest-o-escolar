@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
+import { MENU } from '../../menu';
 import { Crumbs, Alert, DataTable, useFlash } from '../../components/ui';
 
 interface Hab { chave: string; nome: string; descricao: string | null; ativo: boolean; nucleo: boolean }
@@ -46,7 +47,7 @@ export default function Habilitacoes() {
             header: '',
             width: 140,
             render: (h) => h.nucleo ? <span className="badge">Essencial</span> : (
-              <button className="btn btn-sm" disabled={!editavel} onClick={(e) => { e.stopPropagation(); alternar(h); }}>
+              <button className="btn btn-sm" disabled={!editavel || (!h.ativo && !MENU.some((m) => m.modulo === h.chave))} title={!h.ativo && !MENU.some((m) => m.modulo === h.chave) ? 'Módulo em breve: ainda não disponível' : undefined} onClick={(e) => { e.stopPropagation(); alternar(h); }}>
                 {h.ativo ? 'Desabilitar' : 'Habilitar'}
               </button>
             ),

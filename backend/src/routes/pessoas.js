@@ -2,17 +2,18 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { can } from '../middleware/auth.js';
 import { PESSOA_CAMPOS, PESSOA_DATAS, PESSOA_JSON, OPCOES } from '../fields.js';
-import { HttpError, cpfValido, ehData, formatarCpf, limpar, paginacao, pick, semAcento, semAcentoSql, soDigitos, wrap } from '../util.js';
+import { HttpError, cpfValido, ehData, likeSeguro, validarContato, formatarCpf, limpar, paginacao, pick, semAcento, semAcentoSql, soDigitos, wrap } from '../util.js';
 
 const router = Router();
 
 const LISTA = ['p.id', 'p.nome', 'p.cpf', 'p.sexo', 'p.email', 'p.ultimo_login', 'p.celular', 'p.telefone'];
 
 function filtros(q, query) {
+  for (const k of ['nome', 'cpf', 'email', 'codigo']) if (typeof query[k] === 'string') query[k] = query[k].trim();
   if (query.codigo) q.where('p.id', Number(query.codigo) || 0);
-  if (query.nome) q.whereRaw(`${semAcentoSql('p.nome')} like ?`, [`%${semAcento(query.nome)}%`]);
+  if (query.nome) q.whereRaw(`${semAcentoSql('p.nome')} like ?`, [`%${likeSeguro(semAcento(query.nome))}%`]);
   if (query.cpf) q.whereRaw("regexp_replace(coalesce(p.cpf,''), '\\D', '', 'g') like ?", [`%${soDigitos(query.cpf)}%`]);
-  if (query.email) q.whereRaw('lower(p.email) like ?', [`%${String(query.email).toLowerCase()}%`]);
+  if (query.email) q.whereRaw('lower(p.email) like ?', [`%${likeSeguro(String(query.email).toLowerCase())}%`]);
 }
 
 // Modal "Vincular / Consultar": filtros Código, Nome, CPF, E-mail.
@@ -46,6 +47,7 @@ function preparar(body) {
     if (!cpfValido(dados.cpf)) throw new HttpError(400, 'CPF inválido.');
     dados.cpf = formatarCpf(dados.cpf);
   }
+  validarContato(dados);
   for (const c of PESSOA_DATAS) if (dados[c] && !ehData(dados[c])) throw new HttpError(400, 'Data inválida.');
   if (dados.sexo && !OPCOES.sexo.includes(dados.sexo)) throw new HttpError(400, 'Sexo inválido.');
   if (dados.estado_civil && !OPCOES.estado_civil.includes(dados.estado_civil)) throw new HttpError(400, 'Estado civil inválido.');

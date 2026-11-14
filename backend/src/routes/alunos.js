@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { can } from '../middleware/auth.js';
 import { ALUNO_CAMPOS, ALUNO_DATAS, ALUNO_JSON, OPCOES } from '../fields.js';
 import { gerarDocumentos, opcoesResponsaveis } from '../services/documentosService.js';
-import { HttpError, cpfValido, ehData, formatarCpf, limpar, paginacao, pick, semAcento, semAcentoSql, soDigitos, wrap } from '../util.js';
+import { HttpError, cpfValido, ehData, likeSeguro, validarContato, formatarCpf, limpar, paginacao, pick, semAcento, semAcentoSql, soDigitos, wrap } from '../util.js';
 
 const router = Router();
 
@@ -21,8 +21,9 @@ const SITUACOES = {
 
 function filtros(q, query) {
   q.whereNull('a.excluido_em');
+  for (const k of ['q', 'nome', 'matricula', 'cpf', 'codigo']) if (typeof query[k] === 'string') query[k] = query[k].trim();
   if (query.q) {
-    const t = `%${semAcento(query.q)}%`;
+    const t = `%${likeSeguro(semAcento(query.q))}%`;
     q.where((b) =>
       b
         .whereRaw(`${semAcentoSql('a.nome_completo')} like ?`, [t])
@@ -32,8 +33,8 @@ function filtros(q, query) {
     );
   }
   if (query.codigo) q.where('a.id', Number(query.codigo) || 0);
-  if (query.nome) q.whereRaw(`${semAcentoSql('a.nome_completo')} like ?`, [`%${semAcento(query.nome)}%`]);
-  if (query.matricula) q.whereRaw("coalesce(a.matricula,'') like ?", [`%${query.matricula}%`]);
+  if (query.nome) q.whereRaw(`${semAcentoSql('a.nome_completo')} like ?`, [`%${likeSeguro(semAcento(query.nome))}%`]);
+  if (query.matricula) q.whereRaw("coalesce(a.matricula,'') like ?", [`%${likeSeguro(query.matricula)}%`]);
   if (query.cpf) q.whereRaw("regexp_replace(coalesce(a.cpf,''), '\\D', '', 'g') like ?", [`%${soDigitos(query.cpf)}%`]);
   if (query.responsavel_id) {
     const id = Number(query.responsavel_id);
@@ -116,6 +117,8 @@ async function preparar(body, ignorarId) {
   if (!dados.data_nascimento) throw new HttpError(400, 'Informe a data de nascimento.');
   for (const c of ALUNO_DATAS) if (dados[c] && !ehData(dados[c])) throw new HttpError(400, `Data inválida: ${c}.`);
   if (dados.data_nascimento > new Date().toISOString().slice(0, 10)) throw new HttpError(400, 'A data de nascimento não pode ser futura.');
+  if (dados.data_nascimento < '1900-01-01') throw new HttpError(400, 'Data de nascimento inválida (anterior a 1900).');
+  validarContato(dados);
   for (const [campo, valores] of Object.entries(OPCOES)) {
     if (dados[campo] && !valores.includes(dados[campo])) throw new HttpError(400, `Valor inválido para ${campo}.`);
   }

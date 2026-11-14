@@ -265,8 +265,8 @@ table.data tbody tr.selected { background: var(--tint); box-shadow: inset 3px 0 
 table.data { min-width: 560px; }
 .perm-row-time { grid-template-columns: 1fr 130px 130px; }
 @media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); width: 276px; }
-  .sidebar.open { transform: none; box-shadow: 0 0 40px rgba(13,26,110,.28); }
+  .sidebar { transform: translateX(-100%); width: 276px; visibility: hidden; transition: width .2s ease, transform .2s ease, visibility 0s .2s; }
+  .sidebar.open { transform: none; visibility: visible; transition: width .2s ease, transform .2s ease, visibility 0s; box-shadow: 0 0 40px rgba(13,26,110,.28); }
   .sidebar-backdrop { display: block; position: fixed; inset: 0; background: rgba(13,26,110,.38); z-index: 25; }
   .main { margin-left: 0; }
   .topbar { padding: 0 14px 0 8px; }

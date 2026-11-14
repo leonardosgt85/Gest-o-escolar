@@ -81,7 +81,7 @@ export default function ValoresAno() {
                 <td><input className="f-input" style={{ height: 32 }} list="series-val" aria-label="Série" placeholder="Série (ex.: 4º ano)" value={novo.serie} onChange={(e) => setNovo({ ...novo, serie: e.target.value })} /><datalist id="series-val">{SERIES.map((s) => <option key={s} value={s} />)}</datalist></td>
                 <td><select className="f-input" style={{ height: 32 }} aria-label="Turno" value={novo.turno} onChange={(e) => setNovo({ ...novo, turno: e.target.value })}>{TURNOS.map((t) => <option key={t}>{t}</option>)}</select></td>
                 <td><input className="f-input" style={{ height: 32, maxWidth: 130 }} aria-label="Valor da parcela" inputMode="decimal" placeholder="0,00" value={novo.valor} onChange={(e) => setNovo({ ...novo, valor: e.target.value })} /></td>
-                <td><button className="btn btn-sm btn-green" onClick={() => void rodar(async () => { const r = await api.put<Dados>(`/matriculas/precos/${ano}`, { serie: novo.serie, turno: novo.turno, valor_parcela: novo.valor }); setNovo({ ...novo, valor: '' }); return r; }, 'Valor cadastrado.')}>Incluir</button></td>
+                <td><button className="btn btn-sm btn-green" onClick={() => void rodar(async () => { const r = await api.put<Dados>(`/matriculas/precos/${ano}`, { serie: novo.serie, turno: novo.turno, valor_parcela: novo.valor, novo: true }); setNovo({ ...novo, valor: '' }); return r; }, 'Valor cadastrado.')}>Incluir</button></td>
               </tr>
             )}
           </tbody>
