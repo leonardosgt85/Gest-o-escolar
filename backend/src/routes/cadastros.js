@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { serieNormalizada } from '../services/seriesDb.js';
-import { normTxt } from '../services/series.js';
+import { normTxt, compararSerie } from '../services/series.js';
 import { HttpError, likeSeguro, semAcento, semAcentoSql, wrap } from '../util.js';
 
 const router = Router();
@@ -86,7 +86,8 @@ router.get('/turmas', ler, wrap(async (req, res) => {
     .select('t.*', db.raw("(select count(*) from matriculas m where m.turma_id = t.id and m.status = 'ativa')::int as alunos"))
     .orderBy([{ column: 't.ano', order: 'desc' }, 't.serie', 't.nome', 't.turno']);
   if (req.query.ano) q.where('t.ano', Number(req.query.ano));
-  res.json(await q);
+  // ano (mais novo primeiro) → série na ordem da escola (Infantil → Médio) → turma → turno
+  res.json((await q).sort((a, b) => b.ano - a.ano || compararSerie(a.serie, b.serie) || String(a.nome).localeCompare(String(b.nome), 'pt-BR') || String(a.turno).localeCompare(String(b.turno), 'pt-BR')));
 }));
 
 function validarTurma(b) {
@@ -167,8 +168,9 @@ async function matriculasSemTurma(ano) {
   const mats = await db('matriculas as m').join('alunos as a', 'a.id', 'm.aluno_id')
     .where({ 'm.ano': ano, 'm.status': 'ativa' }).whereNull('m.turma_id')
     .select('m.id as matricula_id', 'a.nome_completo as aluno', 'm.serie', 'm.turno').orderByRaw('lower(a.nome_completo)');
-  const turmas = await db('turmas').where({ ano, ativo: true }).orderBy(['serie', 'nome'])
-    .select('*', db.raw("(select count(*) from matriculas x where x.turma_id = turmas.id and x.status = 'ativa')::int as ocupadas"));
+  const turmas = (await db('turmas').where({ ano, ativo: true })
+    .select('*', db.raw("(select count(*) from matriculas x where x.turma_id = turmas.id and x.status = 'ativa')::int as ocupadas")))
+    .sort((a, b) => compararSerie(a.serie, b.serie) || String(a.nome).localeCompare(String(b.nome), 'pt-BR'));
   return mats.map((m) => ({ ...m, candidatas: turmas.filter((t) => mesmaSerie(t.serie, m.serie)).map((t) => ({ id: t.id, nome: `${t.serie} ${t.nome} — ${t.turno}`, turno: t.turno, cheia: !!t.limite_alunos && t.ocupadas >= t.limite_alunos })), unica: turmas.filter((t) => mesmaSerie(t.serie, m.serie) && turnoNorm(t.turno) === turnoNorm(m.turno)) }));
 }
 router.get('/enturmacao', ler, wrap(async (req, res) => {
@@ -207,7 +209,7 @@ router.get('/matriz', ler, wrap(async (req, res) => {
     .select('m.*', 'd.nome as disciplina_nome', 'd.sigla as disciplina_sigla').orderBy(['m.serie', 'd.nome']);
   if (ano) q.where('m.ano', ano);
   if (req.query.serie) q.where('m.serie', txt(req.query.serie));
-  res.json(await q);
+  res.json((await q).sort((a, b) => compararSerie(a.serie, b.serie) || String(a.disciplina_nome).localeCompare(String(b.disciplina_nome), 'pt-BR')));
 }));
 
 router.put('/matriz', gravar, wrap(async (req, res) => {

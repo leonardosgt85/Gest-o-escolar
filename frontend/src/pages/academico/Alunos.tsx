@@ -129,7 +129,7 @@ export default function Alunos() {
         cols={[
           { header: 'Código', width: 80, render: (a) => a.id },
           { header: 'Matrícula', render: (a) => a.matricula },
-          { header: 'CPF', render: (a) => a.cpf },
+          { header: 'CPF', render: (a) => <span style={{ whiteSpace: 'nowrap' }}>{a.cpf}</span> },
           { header: 'Nome', render: (a) => <button className="row-link" onClick={(e) => { e.stopPropagation(); nav(`/academico/alunos/${a.id}/matriculas`); }}>{a.nome_completo}</button> },
           { header: 'Nascimento', render: (a) => fmtData(a.data_nascimento) },
           { header: 'Telefone', render: (a) => [a.ddd, a.celular || a.telefone].filter(Boolean).join(' ') },

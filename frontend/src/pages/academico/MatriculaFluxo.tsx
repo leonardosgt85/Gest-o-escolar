@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { nestaSerie } from '../../lib/series';
 import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth';
@@ -436,7 +437,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
     <div className="success">
       <div className="ic" aria-hidden="true"><Icon name="check" size={22} /></div>
       <div style={{ fontSize: 15, fontWeight: 600 }}>Matrícula {m.ano} efetivada.</div>
-      <div style={{ color: '#3b4577' }}>{e.aluno.nome} está matriculado(a){m.serie ? ` no ${m.serie}` : ''}. O contrato assinado e os termos ficam guardados na linha do tempo desta matrícula.</div>
+      <div style={{ color: '#3b4577' }}>{e.aluno.nome} está matriculado(a){m.serie ? ` ${nestaSerie(m.serie)}` : ''}. O contrato assinado e os termos ficam guardados na linha do tempo desta matrícula.</div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={onConcluir}>Ver linha do tempo</button>
         <Link className="btn" to={`/academico/alunos/${e.aluno.id}/matriculas`}>Voltar às matrículas</Link>

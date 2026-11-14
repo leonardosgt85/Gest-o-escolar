@@ -6,6 +6,7 @@ import { useAuth } from './auth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Home from './pages/Home';
+import NaoEncontrada from './pages/NaoEncontrada';
 import Usuarios from './pages/gerencial/Usuarios';
 import GruposPermissao from './pages/gerencial/GruposPermissao';
 import GrupoForm from './pages/gerencial/GrupoForm';
@@ -94,7 +95,7 @@ export default function App() {
         <Route path="gerencial/cadastros/matriz" element={<Exige perm="gerencial.cadastros"><MatrizCurricular /></Exige>} />
         <Route path="gerencial/email" element={<Exige perm="gerencial.email"><EmailConfig /></Exige>} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NaoEncontrada />} />
       </Route>
     </Routes>
   );

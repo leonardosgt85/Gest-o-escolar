@@ -60,7 +60,7 @@ export default function Pessoas() {
         onOpen={(p) => setModal({ id: p.id })}
         cols={[
           { header: 'Código', width: 90, render: (p) => p.id },
-          { header: 'CPF', render: (p) => p.cpf },
+          { header: 'CPF', render: (p) => <span style={{ whiteSpace: 'nowrap' }}>{p.cpf}</span> },
           { header: 'Nome', render: (p) => <b>{p.nome}</b> },
           { header: 'Sexo', render: (p) => p.sexo },
           { header: 'E-mail', render: (p) => p.email },

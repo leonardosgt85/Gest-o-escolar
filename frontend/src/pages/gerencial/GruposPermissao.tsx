@@ -23,14 +23,14 @@ export default function GruposPermissao() {
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir() {
-    if (!sel || !(await conf.pedir({ titulo: 'Excluir grupo', texto: sel.qtd_usuarios > 0 ? <>O grupo <b>{sel.nome}</b> tem <b>{sel.qtd_usuarios} usuário(s)</b>. Mova-os para outro grupo antes de excluir.</> : <>Excluir o grupo <b>{sel.nome}</b>? Essa ação não pode ser desfeita.</>, confirmar: 'Excluir', perigo: true }))) return;
-    try { await api.del(`/grupos/${sel.id}`); setSel(null); flash.ok('Grupo excluído.'); carregar(); } catch (e) { flash.erro(e); }
+    if (!sel || !(await conf.pedir({ titulo: 'Excluir perfil de acesso', texto: sel.qtd_usuarios > 0 ? <>O perfil <b>{sel.nome}</b> tem <b>{sel.qtd_usuarios} usuário(s)</b>. Mova-os para outro perfil antes de excluir.</> : <>Excluir o perfil <b>{sel.nome}</b>? Essa ação não pode ser desfeita.</>, confirmar: 'Excluir', perigo: true }))) return;
+    try { await api.del(`/grupos/${sel.id}`); setSel(null); flash.ok('Perfil de acesso excluído.'); carregar(); } catch (e) { flash.erro(e); }
   }
   async function duplicar() {
     if (!sel) return;
     try {
       const r = await api.post<{ id: number; nome: string }>(`/grupos/${sel.id}/duplicar`);
-      flash.ok(`Grupo "${r.nome}" criado.`);
+      flash.ok(`Perfil de acesso "${r.nome}" criado.`);
       nav(`/gerencial/grupos/${r.id}`);
     } catch (e) { flash.erro(e); }
   }
@@ -74,12 +74,12 @@ export default function GruposPermissao() {
         ]}
       />
       {usuarios && sel && (
-        <Modal title={`Usuários do grupo ${sel.nome}`} onClose={() => setUsuarios(null)} wide
+        <Modal title={`Usuários do perfil ${sel.nome}`} onClose={() => setUsuarios(null)} wide
           footer={<button className="btn" onClick={() => setUsuarios(null)}>Fechar</button>}>
           <DataTable
             rows={usuarios}
             rowKey={(u) => u.id}
-            empty="Nenhum usuário neste grupo."
+            empty="Nenhum usuário neste perfil."
             cols={[
               { header: 'Código', render: (u) => u.id },
               { header: 'Nome', render: (u) => u.nome_completo },

@@ -13,6 +13,8 @@ interface Usuario {
 
 const NIVEIS = ['Administrador', 'Adm. Financeiro', 'Adm. Pedagógico', 'Usuário'];
 const SIM_NAO = ['Não', 'Sim'];
+// Comissão e "Outras informações" ainda não são aplicadas pelo sistema: ficam ocultas até serem usadas.
+const MOSTRAR_NAO_APLICADOS = false;
 const OUTRAS: [string, string][] = [
   ['exporta_excel', 'Exporta Relatórios para Excel'],
   ['acessa_ips_validos', 'Acessa apenas IPs válidos'],
@@ -69,7 +71,7 @@ export default function Usuarios() {
           { header: 'Professor', width: 90, render: (u) => (u.professor ? 'Sim' : '') },
           { header: 'Nível', render: (u) => u.nivel },
           { header: 'Situação', render: (u) => (u.situacao === 'Ativo' && u.expirado ? <span className="badge off" title={`Acesso expirou em ${String(u.data_limite).slice(0, 10).split('-').reverse().join('/')}`}>Expirado</span> : <span className={`badge ${u.situacao === 'Ativo' ? 'ok' : 'off'}`}>{u.situacao}</span>) },
-          { header: 'Grupo de permissão', render: (u) => u.grupo_nome },
+          { header: 'Perfil de acesso', render: (u) => u.grupo_nome },
           { header: 'Último acesso', render: (u) => fmtDataHora(u.ultimo_acesso) },
         ]}
       />
@@ -116,7 +118,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
       { name: 'cargo', label: 'Cargo', span: 2 },
       { name: 'setor', label: 'Setor', span: 2 },
       { name: 'data_limite', label: 'Data limite para utilização', type: 'date', hint: 'O acesso expira nesta data.' },
-      { name: 'comissao_vendas', label: '% Comissão s/ vendas de cursos', type: 'number' },
+      ...(MOSTRAR_NAO_APLICADOS ? [{ name: 'comissao_vendas', label: '% Comissão s/ vendas de cursos', type: 'number' as const }] : []),
     ],
   }];
 
@@ -141,6 +143,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
   }
 
   const outras = form.outras_informacoes || {};
+  const abas = ['Dados cadastrais', ...(MOSTRAR_NAO_APLICADOS ? ['Outras Informações'] : []), 'Permissões extras'];
 
   return (
     <Modal title={id ? `Usuário ${id}` : 'Novo usuário'} onClose={onClose} wide
@@ -150,14 +153,14 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
       </>}>
       {conf.dialog}
       <Alert>{erro}</Alert>
-      <Tabs tabs={['Dados cadastrais', 'Outras Informações', 'Permissões extras']} active={aba} onChange={setAba} />
-      {aba === 0 && (
+      <Tabs tabs={abas} active={aba} onChange={setAba} />
+      {abas[aba] === 'Dados cadastrais' && (
         <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 300 }}>
             <FormSections sections={dados} form={form} setForm={setForm} readOnly={readOnly} />
             <div className="grid" style={{ marginTop: 12 }}>
               <div className="field span-2">
-                <label>Grupo de Permissão</label>
+                <label>Perfil de acesso</label>
                 <div className="pick-field">
                   <select className="input" disabled={readOnly} value={form.grupo_id ?? ''} onChange={(e) => setForm({ ...form, grupo_id: e.target.value ? Number(e.target.value) : null })}>
                     <option value="">Selecionar</option>
@@ -199,7 +202,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
           </div>
         </div>
       )}
-      {aba === 1 && (
+      {abas[aba] === 'Outras Informações' && (
         <div className="grid">
           {OUTRAS.map(([k, rotulo]) => (
             <div className="field span-2" key={k}>
@@ -212,9 +215,9 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
           <div className="span-4"><Alert kind="info">Estes indicadores são guardados no cadastro; a restrição por IP e a exportação para Excel ainda não são aplicadas pelo sistema.</Alert></div>
         </div>
       )}
-      {aba === 2 && (
+      {abas[aba] === 'Permissões extras' && (
         <>
-          <Alert kind="info">Permissões extras são somadas às do grupo (vale a mais permissiva). Em branco = usa só o grupo.</Alert>
+          <Alert kind="info">Permissões extras são somadas às do perfil de acesso (vale a mais permissiva). Em branco = usa só o perfil.</Alert>
           <PermissionEditor valores={form.permissoes_extras || {}} onChange={(v) => setForm({ ...form, permissoes_extras: v })} readOnly={readOnly} vazioLabel="— Usar o grupo —" />
         </>
       )}

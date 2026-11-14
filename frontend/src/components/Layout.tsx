@@ -26,6 +26,12 @@ export default function Layout() {
   // Só aparecem módulos habilitados com ao menos um item permitido.
   const modulos = modulosVisiveis(moduloAtivo, can);
   // grupo da página atual: o do item (ou rota) de caminho mais específico; o hub /<id> também conta
+  // Só o item de menu com o caminho mais específico fica marcado (ex.: "Documentos do aluno" não marca "Relatórios")
+  const todosTo = MENU.flatMap((m) => m.items.map((i) => i.to));
+  const itemAtivo = (to: string) => {
+    const bate = (c: string) => pathname === c || pathname.startsWith(`${c}/`);
+    return bate(to) && !todosTo.some((o) => o.length > to.length && bate(o));
+  };
   const moduloDoCaminho = (() => {
     let melhor: { id: string; n: number } | null = null;
     for (const m of modulos) {
@@ -120,7 +126,7 @@ export default function Layout() {
                 <div className="nav-items" id={`submenu-${m.id}`}>
                   <div className="nav-items-inner">
                     {m.items.map((i) => (
-                      <NavLink key={i.to} to={i.to} tabIndex={expandido ? 0 : -1} className={({ isActive }) => `nav-sub${isActive ? ' active' : ''}`}>
+                      <NavLink key={i.to} to={i.to} tabIndex={expandido ? 0 : -1} className={() => `nav-sub${itemAtivo(i.to) ? ' active' : ''}`}>
                         {i.label}
                       </NavLink>
                     ))}
@@ -138,7 +144,7 @@ export default function Layout() {
           <div className="flyout" ref={flutRef} style={{ top: Math.max(8, flutuante.top) }} role="menu" aria-label={m.label}>
             <Link to={`/${m.id}`} className="flyout-title">{m.label}</Link>
             {m.items.map((i) => (
-              <NavLink key={i.to} to={i.to} role="menuitem" className={({ isActive }) => `nav-sub${isActive ? ' active' : ''}`}>{i.label}</NavLink>
+              <NavLink key={i.to} to={i.to} role="menuitem" className={() => `nav-sub${itemAtivo(i.to) ? ' active' : ''}`}>{i.label}</NavLink>
             ))}
           </div>
         );

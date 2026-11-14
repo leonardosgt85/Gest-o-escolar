@@ -37,7 +37,7 @@ export default function GrupoForm() {
       const corpo = { nome, vinculo_perfil: vinculo, horarios, permissoes };
       if (novo) { const r = await api.post('/grupos', corpo); nav(`/gerencial/grupos/${r.id}`, { replace: true }); }
       else await api.put(`/grupos/${id}`, corpo);
-      flash.ok('Grupo gravado.');
+      flash.ok('Perfil de acesso gravado.');
     } catch (e) { flash.erro(e); } finally { setSalvando(false); }
   }
 
@@ -54,19 +54,19 @@ export default function GrupoForm() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Perfis de acesso', to: '/gerencial/grupos' }, { label: 'Grupo' }]} />
-          <h1>{novo ? 'Novo grupo' : readOnly ? 'Consultar grupo' : 'Editar grupo'}</h1>
+          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Perfis de acesso', to: '/gerencial/grupos' }, { label: 'Perfil' }]} />
+          <h1>{novo ? 'Novo perfil de acesso' : readOnly ? 'Consultar perfil de acesso' : 'Editar perfil de acesso'}</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
       <div className="card">
         <div className="grid">
           <div className="field span-2">
-            <label>Nome do grupo *</label>
+            <label>Nome do perfil de acesso *</label>
             <input className="input" value={nome} readOnly={readOnly} onChange={(e) => setNome(e.target.value)} />
           </div>
           <div className="field span-2">
-            <label>Vincular o grupo ao perfil de usuários</label>
+            <label>Vincular ao nível de usuário</label>
             <select className="input" value={vinculo} disabled={readOnly} onChange={(e) => setVinculo(e.target.value)}>
               {VINCULOS.map((v) => <option key={v}>{v}</option>)}
             </select>

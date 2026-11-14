@@ -34,7 +34,7 @@ export default function Habilitacoes() {
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
       <Alert kind="info">
-        Os módulos definem quais módulos a escola utiliza. O acesso efetivo de cada usuário é a habilitação do módulo ∩ o grupo de permissão ∩ as permissões extras do usuário.
+        Os módulos definem quais módulos a escola utiliza. O acesso efetivo de cada usuário depende da habilitação do módulo, do perfil de acesso e das permissões extras do usuário.
         {!editavel && ' Somente administradores podem alterar.'}
       </Alert>
       <DataTable

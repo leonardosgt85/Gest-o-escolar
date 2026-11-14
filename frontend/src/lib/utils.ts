@@ -67,13 +67,14 @@ export function useOpcoes() {
   return opcoes;
 }
 
+/** Consulta o ViaCEP. null = CEP incompleto ou serviço fora do ar; 'nao_encontrado' = o CEP não existe. */
 export async function buscarCep(cep: string) {
   const d = soDigitos(cep);
   if (d.length !== 8) return null;
   try {
     const r = await fetch(`https://viacep.com.br/ws/${d}/json/`);
     const j = await r.json();
-    return j.erro ? null : { rua: j.logradouro || '', bairro: j.bairro || '', cidade: j.localidade || '', uf: j.uf || '' };
+    return j.erro ? ('nao_encontrado' as const) : { rua: j.logradouro || '', bairro: j.bairro || '', cidade: j.localidade || '', uf: j.uf || '' };
   } catch {
     return null;
   }

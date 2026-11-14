@@ -145,6 +145,7 @@ export interface FieldDef {
   options?: string[] | string; // lista fixa ou chave em /api/opcoes
   span?: 1 | 2 | 3 | 4;
   hint?: string;
+  hintErro?: boolean; // mostra a dica em vermelho (ex.: CEP não encontrado)
   readOnly?: boolean;
   maxLength?: number;
   placeholder?: string;
@@ -194,7 +195,7 @@ export function Field({ def, value, onChange, opcoes }: { def: FieldDef; value: 
     <div className={`field span-${def.span || 1}`}>
       <label htmlFor={fid}>{def.label}{def.required ? ' *' : ''}</label>
       {input}
-      {def.hint && <div className="hint">{def.hint}</div>}
+      {def.hint && <div className="hint" role={def.hintErro ? 'alert' : undefined} style={def.hintErro ? { color: 'var(--danger, #b3261e)' } : undefined}>{def.hint}</div>}
     </div>
   );
 }
@@ -206,13 +207,15 @@ export interface Section {
 
 export function FormSections({ sections, form, setForm, readOnly }: { sections: Section[]; form: FormState; setForm: (f: FormState) => void; readOnly?: boolean }) {
   const opcoes = useOpcoes();
-  const set = (name: string, v: any) => setForm(setPath(form, name, v));
+  const [cepErro, setCepErro] = useState<string | null>(null);
+  const set = (name: string, v: any) => { if (name === cepErro) setCepErro(null); setForm(setPath(form, name, v)); };
 
   async function aoSairDoCep(def: FieldDef) {
     // Preenche rua/bairro/cidade/UF a partir do CEP (prefixo = nome do campo sem "cep").
     const prefixo = def.name.slice(0, -3);
     const r = await buscarCep(getPath(form, def.name));
-    if (!r) return;
+    setCepErro(r === 'nao_encontrado' ? def.name : null);
+    if (!r || r === 'nao_encontrado') return;
     let f = form;
     f = setPath(f, `${prefixo}rua`, getPath(f, `${prefixo}rua`) || r.rua);
     f = setPath(f, `${prefixo}bairro`, getPath(f, `${prefixo}bairro`) || r.bairro);
@@ -227,7 +230,7 @@ export function FormSections({ sections, form, setForm, readOnly }: { sections: 
         <FragmentSection key={i} title={s.title}>
           {s.fields.map((def) => (
             <div key={def.name} className={`span-${def.span || 1}`} onBlur={def.type === 'cep' && !readOnly ? () => aoSairDoCep(def) : undefined} style={{ display: 'contents' }}>
-              <Field def={{ ...def, readOnly: readOnly || def.readOnly }} value={getPath(form, def.name)} onChange={(v) => set(def.name, v)} opcoes={opcoes} />
+              <Field def={{ ...def, readOnly: readOnly || def.readOnly, ...(cepErro === def.name ? { hint: 'CEP não encontrado. Confira o número ou preencha o endereço manualmente.', hintErro: true } : {}) }} value={getPath(form, def.name)} onChange={(v) => set(def.name, v)} opcoes={opcoes} />
             </div>
           ))}
         </FragmentSection>

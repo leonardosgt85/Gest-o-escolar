@@ -49,3 +49,28 @@ export function serieCanonica(serie, existentes) {
   const k = chaveTxt(n);
   return (existentes || []).find((x) => chaveTxt(x) === k) || n;
 }
+
+const ORDEM_ETAPA = { infantil: 0, fund1: 1, fund2: 2, medio: 3 };
+const ORDEM_INFANTIL = [/berc/, /mini\s*maternal/, /maternal/, /nivel\s*(i|1)\b/, /nivel\s*(ii|2)\b/];
+
+/** Posição da série na ordem da escola (Infantil → Fund. I → Fund. II → Médio). Série desconhecida vai para o fim. */
+export function ordemSerie(serie) {
+  const k = etapaChave(serie);
+  if (!k) return 9999;
+  const s = chaveTxt(serie);
+  let sub = Number(/(\d+)/.exec(s)?.[1]) || 0;
+  if (k === 'infantil') { const i = ORDEM_INFANTIL.findIndex((r) => r.test(s)); sub = i < 0 ? 50 + sub : i; }
+  return ORDEM_ETAPA[k] * 100 + sub;
+}
+
+/** Comparador para sort(): por série na ordem da escola; empate segue pela ordem alfabética do texto. */
+export const compararSerie = (a, b) => ordemSerie(a) - ordemSerie(b) || chaveTxt(a).localeCompare(chaveTxt(b), 'pt-BR');
+
+/** "na 1ª série", "no 2º ano", "no Maternal"... Série vazia → ''. Desconhecida → "em <série>". */
+export function nestaSerie(serie) {
+  const s = normTxt(serie);
+  if (!s) return '';
+  if (/ª/.test(s) || /^(\d+\s*)?s[eé]rie/i.test(s)) return `na ${s}`;
+  if (/º/.test(s) || /^(berç|berc|mini|maternal|n[ií]vel|jardim)/i.test(s)) return `no ${s}`;
+  return `em ${s}`;
+}

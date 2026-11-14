@@ -24,3 +24,19 @@ test('normalização', () => {
   assert.equal(serieCanonica(' 1ª  SÉRIE ', ['1ª série', '2ª série']), '1ª série');
   assert.equal(serieCanonica('4º ano', ['1ª série']), '4º ano');
 });
+
+import { ordemSerie, compararSerie, nestaSerie } from '../src/services/series.js';
+
+test('ordem das séries: Infantil → Fund I → Fund II → Médio', () => {
+  const emb = ['3ª série', '10º ano', '9º ano', '2º ano', 'Nível II', 'Maternal', 'Berçário', '1ª série', 'Mini Maternal', 'Nível I', '1º ano', '6º ano'].filter((s) => s !== '10º ano');
+  assert.deepEqual(emb.sort(compararSerie), ['Berçário', 'Mini Maternal', 'Maternal', 'Nível I', 'Nível II', '1º ano', '2º ano', '6º ano', '9º ano', '1ª série', '3ª série']);
+  assert.ok(ordemSerie('???') > ordemSerie('3ª série'));
+});
+
+test('artigo da série', () => {
+  assert.equal(nestaSerie('1ª série'), 'na 1ª série');
+  assert.equal(nestaSerie('2º ano'), 'no 2º ano');
+  assert.equal(nestaSerie('Maternal'), 'no Maternal');
+  assert.equal(nestaSerie(''), '');
+  assert.equal(nestaSerie('Outra'), 'em Outra');
+});

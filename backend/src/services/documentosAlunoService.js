@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PizZip from 'pizzip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { etapaDe, etapaGeral } from './series.js';
+import { etapaDe, etapaGeral, nestaSerie } from './series.js';
 import { db } from '../db.js';
 import { HttpError } from '../util.js';
 import { carregar } from './documentosService.js';
@@ -138,7 +138,7 @@ function atestadoConclusao(d) {
     { t: `${txt(d.naturalidade) ? `, natural de ${txt(d.naturalidade)}` : ''}, nascido em ${extenso(d.nascimento)}${filiacao}` },
   ];
   pais.forEach((p, i) => { if (i) p1.push({ t: ' e ' }); p1.push({ t: maiusc(p), b: true }); });
-  p1.push({ t: `, foi aluno regularmente matriculado neste estabelecimento de ensino, concluindo a ${txt(d.serie_concluida)} no ano letivo de ${txt(d.ano_letivo)}. ` });
+  p1.push({ t: `, foi aluno regularmente matriculado neste estabelecimento de ensino, concluindo ${/^(\d+\s*)?º|^(berç|berc|mini|maternal|n[ií]vel|jardim)/i.test(txt(d.serie_concluida)) ? 'o' : 'a'} ${txt(d.serie_concluida)} no ano letivo de ${txt(d.ano_letivo)}. ` });
   const p2 = [{ t: 'Declaramos que a emissão do Histórico Escolar e do Certificado de Conclusão encontra-se em fase de registro.' }];
   return docx(TIPOS.conclusao.arquivo, [
     ['ATESTADO DE ESCOLARIDADE', [{ t: 'ATESTADO DE CONCLUSÃO', b: true }]],
@@ -154,7 +154,7 @@ function atestadoEscolaridade(d) {
   const p1 = [
     { t: 'Declaramos para os devidos fins que o (a) aluno (a) ' },
     { t: maiusc(d.nome), b: true },
-    { t: ` está devidamente matriculado (a) nesta instituição de ensino,${txt(d.matricula_num) ? ` matrícula Nº ${txt(d.matricula_num)}` : ''} no ${maiusc(d.serie)}${txt(d.etapa) ? ` do ${maiusc(d.etapa)}` : ''} no Ano Letivo de ${txt(d.ano_letivo)}.` },
+    { t: ` está devidamente matriculado (a) nesta instituição de ensino,${txt(d.matricula_num) ? ` matrícula Nº ${txt(d.matricula_num)}` : ''} ${nestaSerie(d.serie).split(' ')[0] || 'no'} ${maiusc(d.serie)}${txt(d.etapa) ? ` do ${maiusc(d.etapa)}` : ''} no Ano Letivo de ${txt(d.ano_letivo)}.` },
   ];
   const p2 = [
     { t: 'O (a) referido (a) aluno (a) frequenta regularmente as aulas no período ' },
