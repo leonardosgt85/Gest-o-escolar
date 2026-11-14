@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Alert, Crumbs, DataTable, Modal, useFlash } from '../../components/ui';
+import { Alert, Crumbs, DataTable, Modal, useFlash, useConfirmar, useLimpaErro } from '../../components/ui';
 import { brl } from '../../lib/matriculas';
 
 export interface ItemCatalogo { id: number; ano: number; tipo: string; nome: string; serie: string | null; valor: number; por_bimestre: boolean; ativo: boolean }
@@ -18,11 +18,13 @@ export default function ItensCatalogo() {
   const [modal, setModal] = useState<{ i?: ItemCatalogo } | null>(null);
   const [copiar, setCopiar] = useState(false);
   const flash = useFlash();
-  const carregar = () => api.get<ItemCatalogo[]>(`/itens/catalogo${qs({ ano })}`).then((r) => { setLista(r); setSel(null); }).catch(flash.erro);
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
+  const carregar = () => api.get<ItemCatalogo[]>(`/itens/catalogo${qs({ ano })}`).then((r) => { setLista(r); setSel(null); }).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { void carregar(); }, [ano]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir(i: ItemCatalogo) {
-    if (!window.confirm(`Excluir “${i.nome}”?`)) return;
+    if (!(await conf.pedir({ titulo: 'Excluir item do catálogo', texto: <>Excluir <b>{i.nome}</b> do catálogo de {i.ano}? Se algum aluno já tiver este item, o sistema vai pedir para inativá-lo em vez de excluir.</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/itens/catalogo/${i.id}`); flash.ok('Item excluído.'); void carregar(); } catch (e) { flash.erro(e); }
   }
   return (
@@ -32,6 +34,7 @@ export default function ItensCatalogo() {
         <h1>Material e uniformes</h1>
       </div></div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <p className="muted" style={{ marginTop: 0 }}>Cadastre aqui o que a escola vende e o valor por série. Na ficha do aluno, o item já entra com este valor. O material é entregue por bimestre, conforme o pagamento.</p>
       <div className="toolbar">
         {manut && <button className="btn btn-green" onClick={() => setModal({})}>Novo item</button>}
@@ -40,7 +43,7 @@ export default function ItensCatalogo() {
         {manut && <button className="btn" onClick={() => setCopiar(true)}>Copiar de outro ano</button>}
         <label className="switch">Ano letivo <input className="input" style={{ width: 90, marginLeft: 6 }} type="number" min={2000} max={2100} value={ano} onChange={(e) => setAno(e.target.value)} /></label>
       </div>
-      <DataTable cartoes rows={lista} rowKey={(i) => i.id} selectedKey={sel?.id} onSelect={setSel} onOpen={(i) => manut && setModal({ i })} empty="Nenhum item neste ano. Use “Novo item”."
+      <DataTable loading={carregando} cartoes rows={lista} rowKey={(i) => i.id} selectedKey={sel?.id} onSelect={setSel} onOpen={(i) => manut && setModal({ i })} empty="Nenhum item neste ano. Use “Novo item”."
         cols={[
           { header: 'Item', render: (i) => <b>{i.nome}</b> },
           { header: 'Tipo', width: 150, render: (i) => TIPO_ITEM[i.tipo] },
@@ -59,6 +62,7 @@ function ItemModal({ item, ano, onClose, onSaved }: { item?: ItemCatalogo; ano: 
   const [f, setF] = useState({ ano: item?.ano ?? Number(ano), tipo: item?.tipo ?? 'material', nome: item?.nome ?? '', serie: item?.serie ?? '', valor: item ? String(item.valor).replace('.', ',') : '', ativo: item?.ativo ?? true });
   const [series, setSeries] = useState<string[]>([]);
   const [erro, setErro] = useState('');
+  useLimpaErro(erro, () => setErro(''), f);
   useEffect(() => { api.get<string[]>('/cadastros/series').then(setSeries).catch(() => {}); }, []);
   async function gravar() {
     setErro('');

@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import PizZip from 'pizzip';
 import { db } from '../db.js';
 import { HttpError, formatarCpf } from '../util.js';
-import { carregar, gerarArquivos, padrao, ROTULOS, telefone, dadosColegio } from './documentosService.js';
+import { agruparPorPessoa, carregar, gerarArquivos, padrao, ROTULOS, telefone, dadosColegio } from './documentosService.js';
 import * as autentique from './autentique.js';
 import { precoDe, precosDoAno } from './precosService.js';
 import { chaveTxt, normTxt } from './series.js';
@@ -137,8 +137,8 @@ export async function estado(id) {
     db('matricula_eventos as e').leftJoin('usuarios as u', 'u.id', 'e.usuario_id').where('e.matricula_id', id).orderBy([{ column: 'e.ocorrido_em' }, { column: 'e.id' }]).select('e.*', 'u.nome_completo as usuario'),
   ]);
   const { responsaveis } = await carregar(m.aluno_id);
-  const opcoes = Object.entries(responsaveis).filter(([, p]) => p).map(([chave, p]) => ({
-    chave, rotulo: ROTULOS[chave], nome: p.nome, cpf: formatarCpf(p.cpf), email: p.email || null, celular: telefone(p) || null,
+  const opcoes = agruparPorPessoa(responsaveis).map((g) => ({
+    chave: g.chave, chaves: g.chaves, rotulo: g.rotulo, nome: g.pessoa.nome, cpf: formatarCpf(g.pessoa.cpf), email: g.pessoa.email || null, celular: telefone(g.pessoa) || null,
   }));
 
   // contatos do cadastro (aluno + responsáveis) para escolher o destino do link
@@ -319,7 +319,7 @@ export async function avancar(id, usuarioId) {
   }
   if (de === 4 && !e.checks.assinado) throw new HttpError(409, 'A assinatura ainda não foi concluída.');
   if (de >= 5) throw new HttpError(400, 'Use "Efetivar matrícula" no último passo.');
-  const resp = e.opcoes.find((o) => o.chave === m.responsavel_chave);
+  const resp = e.opcoes.find((o) => o.chaves.includes(m.responsavel_chave));
   await db.transaction(async (trx) => {
     const novo = de + 1;
     await trx('matriculas').where({ id }).update({ passo: novo, passo_max: Math.max(m.passo_max, novo), status: STATUS_POR_PASSO[novo - 1], updated_at: agora() });
@@ -638,11 +638,24 @@ export async function efetivar(id, usuarioId) {
   if (f.length) throw new HttpError(409, `Falta concluir: ${f.join(', ')}.`);
   await db.transaction(async (trx) => {
     await trx('matriculas').where({ id }).update({ status: 'ativa', passo: 5, passo_max: 5, efetivada_em: agora(), efetivada_por: usuarioId, updated_at: agora() });
+    await trx('matricula_eventos').insert({ matricula_id: id, tipo: 'efetivada', titulo: 'Matrícula efetivada', detalhe: 'Contrato assinado, documentos entregues e 1ª parcela confirmada.', usuario_id: usuarioId });
+    // enturmação automática: só quando existe exatamente uma turma candidata (mesma série e turno) e ela não está lotada
+    const mat = await trx('matriculas').where({ id }).first();
+    if (!mat.turma_id) {
+      const candidatas = (await trx('turmas').where({ ano: mat.ano, ativo: true, turno: mat.turno }).select('*')).filter((t) => chaveTxt(t.serie) === chaveTxt(mat.serie));
+      if (candidatas.length === 1) {
+        const t = await trx('turmas').where({ id: candidatas[0].id }).forUpdate().first(); // trava a turma: duas efetivações juntas não estouram o limite
+        const ocupadas = Number((await trx('matriculas').where({ turma_id: t.id, status: 'ativa' }).count('* as n').first()).n);
+        if (!t.limite_alunos || ocupadas < t.limite_alunos) {
+          await trx('matriculas').where({ id }).update({ turma_id: t.id });
+          await evento(trx, id, 'enturmada', 'Aluno enturmado automaticamente', `${t.serie} ${t.nome} (${t.turno}).`, usuarioId);
+        }
+      }
+    }
     // nº de matrícula do aluno (AAAA + código com 6 dígitos), gerado na primeira efetivação; nunca sobrescreve o existente
     const al = await trx('alunos').where({ id: e.matricula.aluno_id }).forUpdate().first();
     if (al && !String(al.matricula ?? '').trim()) {
       await trx('alunos').where({ id: al.id }).update({ matricula: `${e.matricula.ano}${String(al.id).padStart(6, '0')}` });
     }
-    await trx('matricula_eventos').insert({ matricula_id: id, tipo: 'efetivada', titulo: 'Matrícula efetivada', detalhe: 'Contrato assinado, documentos entregues e 1ª parcela confirmada.', usuario_id: usuarioId });
   });
 }

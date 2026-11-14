@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Alert, Crumbs, DataTable, useFlash } from '../../components/ui';
+import { Alert, Crumbs, DataTable, useFlash, useConfirmar } from '../../components/ui';
 import { DisciplinaModal, type Disciplina } from '../../components/DisciplinaSelect';
 
 export default function Disciplinas() {
@@ -13,12 +13,14 @@ export default function Disciplinas() {
   const [sel, setSel] = useState<Disciplina | null>(null);
   const [modal, setModal] = useState<{ d?: Disciplina } | null>(null);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
 
-  const carregar = () => api.get<Disciplina[]>(`/cadastros/disciplinas${qs({ q: busca, somente_ativos: somenteAtivas })}`).then(setLista).catch(flash.erro);
+  const carregar = () => api.get<Disciplina[]>(`/cadastros/disciplinas${qs({ q: busca, somente_ativos: somenteAtivas })}`).then(setLista).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { const t = window.setTimeout(carregar, 250); return () => window.clearTimeout(t); }, [busca, somenteAtivas]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir(d: Disciplina) {
-    if (!window.confirm(`Excluir a disciplina "${d.nome}"?`)) return;
+    if (!(await conf.pedir({ titulo: 'Excluir disciplina', texto: <>Excluir a disciplina <b>{d.nome}</b>? {(d.professores ?? 0) > 0 || (d.usos_matriz ?? 0) > 0 ? <>Ela está em uso ({d.professores ?? 0} professor(es), {d.usos_matriz ?? 0} item(ns) de matriz) e não poderá ser excluída: inative-a.</> : 'Essa ação não pode ser desfeita.'}</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/cadastros/disciplinas/${d.id}`); flash.ok('Disciplina excluída.'); setSel(null); void carregar(); } catch (e) { flash.erro(e); }
   }
 
@@ -31,6 +33,7 @@ export default function Disciplinas() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="toolbar">
         {manut && <button className="btn btn-green" onClick={() => setModal({})}>Nova</button>}
         <button className="btn btn-orange" disabled={!sel || !manut} onClick={() => sel && setModal({ d: sel })}>Editar</button>
@@ -40,6 +43,7 @@ export default function Disciplinas() {
         <input className="input search" placeholder="Pesquisar…" aria-label="Pesquisar disciplina" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <DataTable
+        loading={carregando}
         cartoes
         rows={lista}
         rowKey={(d) => d.id}

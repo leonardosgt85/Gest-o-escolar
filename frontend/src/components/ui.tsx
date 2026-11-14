@@ -1,5 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { buscarCep, getPath, maskCep, maskCpf, maskFone, setPath, UFS, useOpcoes } from '../lib/utils';
 
 /* ---------- Breadcrumb (cada nível com link volta para aquele nível) ---------- */
@@ -104,7 +104,7 @@ export interface Col<T> {
   render: (row: T) => ReactNode;
   width?: string | number;
 }
-export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen, clickable, cartoes, empty = 'Nenhum registro encontrado.' }: {
+export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen, clickable, cartoes, loading, empty = 'Nenhum registro encontrado.' }: {
   cols: Col<T>[];
   rows: T[];
   rowKey: (r: T) => string | number;
@@ -113,6 +113,7 @@ export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen
   onOpen?: (r: T) => void;
   clickable?: boolean; // linha inteira clicável (cursor de mão)
   cartoes?: boolean; // no celular, cada linha vira um cartão (rótulo: valor)
+  loading?: boolean; // enquanto a lista carrega: mostra "Carregando…" em vez de "Nenhum registro"
   empty?: string;
 }) {
   return (
@@ -123,7 +124,7 @@ export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen
         </thead>
         <tbody>
           {rows.length === 0 && (
-            <tr><td colSpan={cols.length} className="empty">{empty}</td></tr>
+            <tr><td colSpan={cols.length} className="empty" role={loading ? 'status' : undefined} aria-busy={loading || undefined}>{loading ? 'Carregando…' : empty}</td></tr>
           )}
           {rows.map((r) => (
             <tr key={rowKey(r)} className={selectedKey === rowKey(r) ? 'selected' : ''} onClick={() => onSelect?.(r)} onDoubleClick={() => onOpen?.(r)}>
@@ -247,6 +248,8 @@ function FragmentSection({ title, children }: { title?: string; children: ReactN
 /* ---------- Hook de confirmação simples ---------- */
 export function useFlash() {
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error' | 'info'; text: string } | null>(null);
+  const { pathname } = useLocation();
+  useEffect(() => { setMsg(null); }, [pathname]); // o aviso não acompanha o usuário para outra tela
   useEffect(() => {
     if (msg?.kind === 'ok') {
       const t = setTimeout(() => setMsg(null), Math.max(4000, msg.text.length * 70)); // mensagens longas ficam mais tempo
@@ -254,4 +257,30 @@ export function useFlash() {
     }
   }, [msg]);
   return { msg, ok: (text: string) => setMsg({ kind: 'ok', text }), erro: (e: unknown) => setMsg({ kind: 'error', text: e instanceof Error ? e.message : String(e) }), clear: () => setMsg(null) };
+}
+
+/* ---------- Erro de formulário que some quando o usuário corrige ---------- */
+/** Limpa o erro assim que `dep` (os campos do formulário) muda depois de o erro aparecer. */
+export function useLimpaErro(erro: unknown, limpar: () => void, dep: unknown) {
+  const anterior = useRef(dep);
+  useEffect(() => {
+    if (anterior.current === dep) return;
+    anterior.current = dep;
+    if (erro) limpar();
+  }, [dep]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/* ---------- Confirmação (no lugar do window.confirm) ---------- */
+interface PedidoConfirmacao { titulo: string; texto: ReactNode; confirmar?: string; cancelar?: string; perigo?: boolean }
+export function useConfirmar() {
+  const [st, setSt] = useState<(PedidoConfirmacao & { resolve: (v: boolean) => void }) | null>(null);
+  const pedir = useCallback((o: PedidoConfirmacao) => new Promise<boolean>((resolve) => setSt({ ...o, resolve })), []);
+  const fechar = (v: boolean) => { st?.resolve(v); setSt(null); };
+  const dialog = st && (
+    <Modal title={st.titulo} onClose={() => fechar(false)}
+      footer={<><button className="btn" autoFocus onClick={() => fechar(false)}>{st.cancelar || 'Cancelar'}</button><button className={`btn ${st.perigo ? 'btn-danger' : 'btn-primary'}`} onClick={() => fechar(true)}>{st.confirmar || 'Confirmar'}</button></>}>
+      <div style={{ lineHeight: 1.5 }}>{st.texto}</div>
+    </Modal>
+  );
+  return { pedir, dialog };
 }

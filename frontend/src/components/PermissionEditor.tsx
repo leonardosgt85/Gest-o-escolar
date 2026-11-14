@@ -19,8 +19,8 @@ export function useCatalogo() {
 // Editor de permissões: uma aba por módulo, cada permissão é um select.
 // Valores que negam aparecem em vermelho; os que liberam, em azul (como no SAE).
 export default function PermissionEditor({ valores, onChange, readOnly, vazioLabel }: {
-  valores: Record<string, string>;
-  onChange: (v: Record<string, string>) => void;
+  valores: Record<string, number>; // chave → código do valor (posição na lista do tipo; 0 = nega)
+  onChange: (v: Record<string, number>) => void;
   readOnly?: boolean;
   vazioLabel?: string; // se informado, adiciona opção "em branco" (usada nas permissões extras do usuário)
 }) {
@@ -33,8 +33,8 @@ export default function PermissionEditor({ valores, onChange, readOnly, vazioLab
       <Tabs tabs={cat.modulos.map((m) => m.nome)} active={aba} onChange={setAba} />
       {mod.permissoes.map((p) => {
         const lista = cat.tipos[p.tipo];
-        const atual = valores[p.chave] ?? (vazioLabel ? '' : lista[0]);
-        const positivo = atual && lista.indexOf(atual) > 0;
+        const atual = valores[p.chave] !== undefined ? String(valores[p.chave]) : (vazioLabel ? '' : '0');
+        const positivo = atual !== '' && Number(atual) > 0;
         return (
           <div className="perm-row" key={p.chave}>
             <div>{p.nome}</div>
@@ -45,12 +45,12 @@ export default function PermissionEditor({ valores, onChange, readOnly, vazioLab
               onChange={(e) => {
                 const novo = { ...valores };
                 if (e.target.value === '') delete novo[p.chave];
-                else novo[p.chave] = e.target.value;
+                else novo[p.chave] = Number(e.target.value);
                 onChange(novo);
               }}
             >
               {vazioLabel && <option value="">{vazioLabel}</option>}
-              {lista.map((v) => <option key={v} value={v}>{v}</option>)}
+              {lista.map((v, i) => <option key={v} value={String(i)}>{v}</option>)}
             </select>
           </div>
         );

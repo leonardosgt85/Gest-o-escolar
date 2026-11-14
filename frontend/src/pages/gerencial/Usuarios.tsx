@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Crumbs, Alert, DataTable, FormSections, Modal, Tabs, useFlash, type Section } from '../../components/ui';
+import { Crumbs, Alert, DataTable, FormSections, Modal, Tabs, useConfirmar, useFlash, type Section, useLimpaErro } from '../../components/ui';
 import DisciplinaSelect from '../../components/DisciplinaSelect';
 import PermissionEditor from '../../components/PermissionEditor';
 import { fmtDataHora, lerArquivoComoDataUrl } from '../../lib/utils';
@@ -28,9 +28,10 @@ export default function Usuarios() {
   const [sel, setSel] = useState<Usuario | null>(null);
   const [modal, setModal] = useState<{ id?: number } | null>(null);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
   const timer = useRef<number>();
 
-  const carregar = () => api.get<Usuario[]>(`/usuarios${qs({ q: busca, somente_ativos: somenteAtivos ? '' : 'false' })}`).then(setLista).catch(flash.erro);
+  const carregar = () => api.get<Usuario[]>(`/usuarios${qs({ q: busca, somente_ativos: somenteAtivos ? '' : 'false' })}`).then(setLista).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(carregar, 250);
@@ -54,6 +55,7 @@ export default function Usuarios() {
         <input className="input search" placeholder="Pesquisar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </div>
       <DataTable
+        loading={carregando}
         rows={lista}
         rowKey={(u) => u.id}
         selectedKey={sel?.id}
@@ -66,7 +68,7 @@ export default function Usuarios() {
           { header: 'Cargo', render: (u) => u.cargo },
           { header: 'Professor', width: 90, render: (u) => (u.professor ? 'Sim' : '') },
           { header: 'Nível', render: (u) => u.nivel },
-          { header: 'Situação', render: (u) => <span className={`badge ${u.situacao === 'Ativo' ? 'ok' : 'off'}`}>{u.situacao}</span> },
+          { header: 'Situação', render: (u) => (u.situacao === 'Ativo' && u.expirado ? <span className="badge off" title={`Acesso expirou em ${String(u.data_limite).slice(0, 10).split('-').reverse().join('/')}`}>Expirado</span> : <span className={`badge ${u.situacao === 'Ativo' ? 'ok' : 'off'}`}>{u.situacao}</span>) },
           { header: 'Grupo de permissão', render: (u) => u.grupo_nome },
           { header: 'Último acesso', render: (u) => fmtDataHora(u.ultimo_acesso) },
         ]}
@@ -90,8 +92,14 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
   const { can } = useAuth();
   const [grupos, setGrupos] = useState<{ id: number; nome: string }[]>([]);
   const [erro, setErro] = useState('');
+  useLimpaErro(erro, () => setErro(''), form);
   const [salvando, setSalvando] = useState(false);
   const arquivo = useRef<HTMLInputElement>(null);
+  const conf = useConfirmar();
+  const [erroDisc, setErroDisc] = useState('');
+  const blocoDisc = useRef<HTMLDivElement>(null);
+  useLimpaErro(erroDisc, () => setErroDisc(''), form.disciplinas_ids);
+  const irParaDisciplinas = () => window.setTimeout(() => blocoDisc.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60);
 
   useEffect(() => {
     api.get('/grupos').then(setGrupos).catch(() => {});
@@ -114,6 +122,14 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
 
   async function gravar() {
     setErro('');
+    if (form.professor && !(form.disciplinas_ids || []).length) { // validação antes de enviar
+      setAba(0); setErroDisc('Marque ao menos uma disciplina para o professor.'); irParaDisciplinas(); return;
+    }
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    if (form.data_limite && String(form.data_limite) < hoje) {
+      const ok = await conf.pedir({ titulo: 'Data limite já passou', texto: <>A data limite (<b>{String(form.data_limite).split('-').reverse().join('/')}</b>) já passou. Com ela o usuário <b>não consegue entrar</b> no sistema e fica como “Expirado” na lista. Gravar mesmo assim?</>, confirmar: 'Gravar mesmo assim', cancelar: 'Voltar e corrigir' });
+      if (!ok) { setAba(0); return; }
+    }
     setSalvando(true);
     try {
       const corpo = { ...form };
@@ -132,6 +148,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
         <button className="btn" onClick={onClose}>Fechar</button>
         {!readOnly && <button className="btn btn-primary" disabled={salvando} onClick={gravar}>{salvando ? 'Gravando…' : 'Gravar'}</button>}
       </>}>
+      {conf.dialog}
       <Alert>{erro}</Alert>
       <Tabs tabs={['Dados cadastrais', 'Outras Informações', 'Permissões extras']} active={aba} onChange={setAba} />
       {aba === 0 && (
@@ -152,13 +169,14 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
                 <label id="lbl-prof">É professor?</label>
                 <div className="radio-row" role="radiogroup" aria-labelledby="lbl-prof">
                   {[['Não', false], ['Sim', true]].map(([r, v]) => (
-                    <label key={String(r)}><input type="radio" name="professor" disabled={readOnly} checked={!!form.professor === v} onChange={() => setForm({ ...form, professor: v, disciplinas_ids: v ? form.disciplinas_ids || [] : [] })} /> {r}</label>
+                    <label key={String(r)}><input type="radio" name="professor" disabled={readOnly} checked={!!form.professor === v} onChange={() => { setForm((f) => ({ ...f, professor: v, disciplinas_ids: v ? f.disciplinas_ids || [] : [] })); if (v) irParaDisciplinas(); }} /> {r}</label>
                   ))}
                 </div>
               </div>
               {form.professor && (
-                <div className="field span-4">
+                <div className="field span-4" ref={blocoDisc}>
                   <label>Disciplinas que leciona</label>
+                  <Alert>{erroDisc}</Alert>
                   <DisciplinaSelect multiple value={form.disciplinas_ids || []} onChange={(v) => setForm((f) => ({ ...f, disciplinas_ids: typeof v === 'function' ? v(f.disciplinas_ids || []) : v }))} readOnly={readOnly} podeCriar={can('gerencial.usuarios', ACESSO.manutencao) || can('gerencial.cadastros', ACESSO.manutencao)} />
                   <small className="muted">O professor enxerga essas disciplinas em todas as turmas. Uma disciplina pode ter vários professores.</small>
                 </div>

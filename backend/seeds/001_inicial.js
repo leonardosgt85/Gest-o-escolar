@@ -10,12 +10,12 @@ function permissoesGrupo(nivel) {
   for (const m of MODULOS) {
     for (const p of m.permissoes) {
       const valores = TIPOS[p.tipo];
-      if (nivel === 'total') out[p.chave] = valores.at(-1);
-      else if (nivel === 'consulta') out[p.chave] = p.tipo === 'tela' ? 'Apenas Consulta' : valores[0];
+      if (nivel === 'total') out[p.chave] = valores.length - 1;
+      else if (nivel === 'consulta') out[p.chave] = p.tipo === 'tela' ? 1 : 0;
       else if (nivel === 'secretaria') {
-        if (m.chave === 'gerencial') out[p.chave] = valores[0];
-        else if (p.chave.endsWith('.excluir')) out[p.chave] = 'Não';
-        else out[p.chave] = valores.at(-1);
+        if (m.chave === 'gerencial') out[p.chave] = 0;
+        else if (p.chave.endsWith('.excluir')) out[p.chave] = 0;
+        else out[p.chave] = valores.length - 1;
       }
     }
   }
@@ -33,7 +33,7 @@ export async function seed(knex) {
   for (const [nome, nivel] of grupos) {
     if (await knex('grupos_permissao').whereRaw('lower(nome) = ?', [nome.toLowerCase()]).first()) continue;
     const [g] = await knex('grupos_permissao').insert({ nome, horarios: JSON.stringify({}) }).returning('id');
-    await knex('grupo_permissoes').insert(Object.entries(permissoesGrupo(nivel)).map(([chave, valor]) => ({ grupo_id: g.id, chave, valor })));
+    await knex('grupo_permissoes').insert(Object.entries(permissoesGrupo(nivel)).map(([chave, valor]) => ({ grupo_id: g.id, chave, valor: String(valor) })));
   }
 
   const { adminEmail, adminPassword } = config.seed;

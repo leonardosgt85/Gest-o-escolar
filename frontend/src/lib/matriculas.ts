@@ -84,7 +84,7 @@ export interface Estado {
   precos: { serie: string; turno: string; valor_parcela: number }[];
   turmas_disponiveis: { serie: string; turno: string }[];
   contatos: { emails: { valor: string; rotulo: string; nome: string }[]; celulares: { e164: string; valor: string; rotulo: string; nome: string }[] };
-  opcoes: { chave: string; rotulo: string; nome: string; cpf: string | null; email: string | null; celular: string | null }[];
+  opcoes: { chave: string; chaves: string[]; rotulo: string; nome: string; cpf: string | null; email: string | null; celular: string | null }[];
   docs_aluno: { chave: string; rotulo: string; ok: boolean; arquivo: { id: number; nome: string; mime: string; enviado_em: string } | null }[];
   exige_upload: boolean;
   portal: { ativo: boolean; expira_em: string | null; enviado_em: string | null; enviado_para: string | null; acesso_em: string | null; dados_confirmados_em: string | null };

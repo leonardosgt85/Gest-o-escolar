@@ -10,9 +10,10 @@ export default function Habilitacoes() {
   const { me, can } = useAuth();
   const [itens, setItens] = useState<Hab[]>([]);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
   const editavel = can('gerencial.habilitacoes', ACESSO.manutencao) && me?.nivel === 'Administrador';
 
-  const carregar = () => api.get<Hab[]>('/habilitacoes').then(setItens).catch(flash.erro);
+  const carregar = () => api.get<Hab[]>('/habilitacoes').then(setItens).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function alternar(h: Hab) {
@@ -37,6 +38,7 @@ export default function Habilitacoes() {
         {!editavel && ' Somente administradores podem alterar.'}
       </Alert>
       <DataTable
+        loading={carregando}
         rows={itens}
         rowKey={(h) => h.chave}
         cols={[

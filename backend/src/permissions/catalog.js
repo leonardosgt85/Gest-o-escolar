@@ -47,23 +47,33 @@ export const POR_CHAVE = Object.fromEntries(TODAS.map((p) => [p.chave, p]));
 
 export const NIVEIS_USUARIO = ['Administrador', 'Adm. Financeiro', 'Adm. Pedagógico', 'Usuário'];
 
-export function indiceValor(chave, valor) {
+/**
+ * Código de um valor de permissão = posição dele na lista do tipo (0 = nega).
+ * Aceita o código (2 ou "2") e também o rótulo antigo ("Manutenção"), para ler dados gravados antes da conversão.
+ * Devolve null quando o valor não existe para essa permissão.
+ */
+export function codigoValor(chave, valor) {
   const p = POR_CHAVE[chave];
-  if (!p) return 0;
-  const i = TIPOS[p.tipo].indexOf(valor);
-  return i < 0 ? 0 : i;
+  if (!p) return null;
+  const lista = TIPOS[p.tipo];
+  if (typeof valor === 'number' || (typeof valor === 'string' && /^\d+$/.test(valor.trim()))) {
+    const n = Number(valor);
+    return Number.isInteger(n) && n >= 0 && n < lista.length ? n : null;
+  }
+  const i = lista.indexOf(valor);
+  return i < 0 ? null : i;
 }
 
-export function valorValido(chave, valor) {
-  const p = POR_CHAVE[chave];
-  return !!p && TIPOS[p.tipo].includes(valor);
-}
+export const indiceValor = (chave, valor) => codigoValor(chave, valor) ?? 0;
 
-// Habilitações iniciais (feature flags por módulo). Módulos futuros ficam desligados.
-export const HABILITACOES_INICIAIS = [
-  { chave: 'gerencial', nome: 'Gerencial', descricao: 'Usuários, grupos de permissão e habilitações', ativo: true, nucleo: true, ordem: 1 },
-  { chave: 'academico', nome: 'Gestão Acadêmica', descricao: 'Alunos e pessoas (responsáveis)', ativo: true, nucleo: false, ordem: 2 },
-  { chave: 'financeiro', nome: 'Financeiro', descricao: 'Em breve', ativo: false, nucleo: false, ordem: 3 },
-  { chave: 'kanban', nome: 'Kanban', descricao: 'Em breve', ativo: false, nucleo: false, ordem: 4 },
-  { chave: 'administrativo', nome: 'Gerenciamento Administrativo', descricao: 'Em breve', ativo: false, nucleo: false, ordem: 5 },
-];
+export const valorValido = (chave, valor) => codigoValor(chave, valor) !== null;
+
+/** { chave: rótulo | código } → { chave: código }, descartando o que não existe no catálogo. */
+export function normalizarPermissoes(obj) {
+  const out = {};
+  for (const [chave, valor] of Object.entries(obj || {})) {
+    const c = codigoValor(chave, valor);
+    if (c !== null) out[chave] = c;
+  }
+  return out;
+}

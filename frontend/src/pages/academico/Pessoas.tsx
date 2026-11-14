@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
 import { PessoaFormModal, type PessoaResumo } from '../../components/PessoaModals';
-import { Crumbs, Alert, DataTable, Pagination, useFlash } from '../../components/ui';
+import { Crumbs, Alert, DataTable, Pagination, useFlash, useConfirmar } from '../../components/ui';
 
 export default function Pessoas() {
   const { can } = useAuth();
@@ -13,9 +13,11 @@ export default function Pessoas() {
   const [sel, setSel] = useState<PessoaResumo | null>(null);
   const [modal, setModal] = useState<{ id?: number } | null>(null);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
   const timer = useRef<number>();
 
-  const buscar = (pagina = 1) => api.get(`/pessoas${qs({ ...filtros, pagina })}`).then(setRes).catch(flash.erro);
+  const buscar = (pagina = 1) => api.get(`/pessoas${qs({ ...filtros, pagina })}`).then(setRes).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => {
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => buscar(1), 250);
@@ -23,7 +25,7 @@ export default function Pessoas() {
   }, [filtros]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir() {
-    if (!sel || !window.confirm(`Excluir ${sel.nome}?`)) return;
+    if (!sel || !(await conf.pedir({ titulo: 'Excluir pessoa', texto: <>Excluir <b>{sel.nome}</b>? Se ela estiver vinculada a algum aluno como responsável, o sistema vai recusar a exclusão.</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/pessoas/${sel.id}`); setSel(null); flash.ok('Pessoa excluída.'); buscar(res.pagina); } catch (e) { flash.erro(e); }
   }
 
@@ -40,6 +42,7 @@ export default function Pessoas() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="grid">{campo('codigo', 'Código')}{campo('nome', 'Nome')}{campo('cpf', 'CPF')}{campo('email', 'E-mail')}</div>
       </div>
@@ -49,6 +52,7 @@ export default function Pessoas() {
         {podeExcluir && <button className="btn btn-red" disabled={!sel} onClick={excluir}>Excluir</button>}
       </div>
       <DataTable
+        loading={carregando}
         rows={res.itens}
         rowKey={(p) => p.id}
         selectedKey={sel?.id}

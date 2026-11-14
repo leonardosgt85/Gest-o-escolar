@@ -1,4 +1,4 @@
-import { TODAS, TIPOS } from '../permissions/catalog.js';
+import { TODAS, TIPOS, codigoValor } from '../permissions/catalog.js';
 
 // Acesso efetivo = Habilitação do módulo ∩ (Grupo de Permissão + extras do usuário).
 // "Administrador" tem o máximo em tudo, mas continua limitado pelas habilitações.
@@ -14,8 +14,9 @@ export function calcularPermissoes({ usuario, grupoPerms, extras, modulosAtivos 
       resultado[p.chave] = valores.length - 1;
       continue;
     }
-    const doGrupo = Math.max(0, valores.indexOf(grupoPerms[p.chave]));
-    const extra = Math.max(0, valores.indexOf(extras?.[p.chave]));
+    // grupo e extras guardam o código (0, 1, 2); dados antigos com rótulo também são entendidos
+    const doGrupo = codigoValor(p.chave, grupoPerms[p.chave]) ?? 0;
+    const extra = codigoValor(p.chave, extras?.[p.chave]) ?? 0;
     resultado[p.chave] = Math.max(doGrupo, extra);
   }
   return resultado;
@@ -50,6 +51,8 @@ export function dentroDoHorario(horarios) {
   if (!janela) return true;
   const de = paraMin(janela.de);
   const ate = paraMin(janela.ate);
+  // cadastros antigos com fim antes do início: vale como "atravessa a meia-noite" (as telas novas não deixam gravar assim)
+  if (de !== null && ate !== null && ate < de) return minutos >= de || minutos <= ate;
   if (de !== null && minutos < de) return false;
   if (ate !== null && minutos > ate) return false;
   return true;

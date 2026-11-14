@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Alert, Crumbs, DataTable, Modal, useFlash } from '../../components/ui';
+import { Alert, Crumbs, DataTable, Modal, useFlash, useConfirmar, useLimpaErro } from '../../components/ui';
 import DisciplinaSelect from '../../components/DisciplinaSelect';
 
 interface Item { id: number; ano: number; serie: string; disciplina_id: number; disciplina_nome: string; carga_horaria: number | null; aulas_semana: number | null; dias_semana: number[] }
@@ -20,13 +20,15 @@ export default function MatrizCurricular() {
   const [modal, setModal] = useState<{ i?: Item } | null>(null);
   const [copiar, setCopiar] = useState(false);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
 
-  const carregar = () => api.get<Item[]>(`/cadastros/matriz${qs({ ano, serie })}`).then(setLista).catch(flash.erro);
+  const carregar = () => api.get<Item[]>(`/cadastros/matriz${qs({ ano, serie })}`).then(setLista).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { void carregar(); }, [ano, serie]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { api.get<string[]>('/cadastros/series').then(setSeries).catch(() => {}); }, [lista.length]);
 
   async function remover(i: Item) {
-    if (!window.confirm(`Remover ${i.disciplina_nome} da ${i.serie}?`)) return;
+    if (!(await conf.pedir({ titulo: 'Remover da matriz', texto: <>Remover <b>{i.disciplina_nome}</b> da matriz de <b>{i.serie}</b> em {i.ano}? As turmas dessa série deixam de ter essa disciplina no diário.</>, confirmar: 'Remover', perigo: true }))) return;
     try { await api.del(`/cadastros/matriz/${i.id}`); flash.ok('Removida da matriz.'); setSel(null); void carregar(); } catch (e) { flash.erro(e); }
   }
 
@@ -39,6 +41,7 @@ export default function MatrizCurricular() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="toolbar">
         {manut && <button className="btn btn-green" onClick={() => setModal({})}>Adicionar disciplina</button>}
         <button className="btn btn-orange" disabled={!sel || !manut} onClick={() => sel && setModal({ i: sel })}>Editar</button>
@@ -51,6 +54,7 @@ export default function MatrizCurricular() {
         </select>
       </div>
       <DataTable
+        loading={carregando}
         cartoes
         rows={lista}
         rowKey={(i) => i.id}
@@ -80,6 +84,7 @@ function ItemModal({ item, ano, serieInicial, series, existentes, onEditar, onCl
   const [dias, setDias] = useState<number[]>(item?.dias_semana ?? []);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
+  useLimpaErro(erro, () => setErro(''), `${serie}|${disc.join()}|${ch}|${aulas}|${dias.join()}`);
   // "Adicionar" nunca sobrescreve: se a disciplina já está na série, oferece editar a linha existente
   const jaExiste = !item && disc[0] ? existentes.find((x) => x.disciplina_id === disc[0] && x.serie.trim().toLowerCase() === serie.trim().toLowerCase()) : undefined;
   async function gravar() {
@@ -104,6 +109,8 @@ function ItemModal({ item, ano, serieInicial, series, existentes, onEditar, onCl
           <div className="dias" role="group" aria-label="Dias da semana">
             {DIAS.map(([n, r]) => <button key={n} type="button" className="chip" aria-pressed={dias.includes(n)} onClick={() => setDias((p) => (p.includes(n) ? p.filter((x) => x !== n) : [...p, n]))}>{r}</button>)}
           </div>
+          {Number(aulas) > 0 && dias.length > 0 && <small className="muted" style={{ display: 'block', marginBottom: 4 }}>{Number(aulas)} aula{Number(aulas) === 1 ? '' : 's'} por semana em {dias.length} dia{dias.length === 1 ? '' : 's'}{Number(aulas) > dias.length ? ` (mais de uma aula em alguns dias).` : '.'}</small>}
+          {Number(aulas) > 0 && dias.length > Number(aulas) && <Alert kind="info">Há {dias.length} dias marcados e só {Number(aulas)} aula{Number(aulas) === 1 ? '' : 's'} por semana: algum dia ficará sem aula. Confira se é isso mesmo.</Alert>}
           <small className="muted">Esses dias geram as colunas do diário de classe. Pode ficar em branco por enquanto.</small>
         </div>
       </div>

@@ -8,7 +8,7 @@ import './matriculas.css';
 export default function MatriculaTimeline({ e, onContinuar }: { e: Estado; onContinuar?: () => void }) {
   const m = e.matricula;
   const x = situacao(m);
-  const contratante = e.opcoes.find((o) => o.chave === m.responsavel_chave);
+  const contratante = e.opcoes.find((o) => o.chaves.includes(m.responsavel_chave ?? ''));
   const vf = valorFinal(m);
   const contrato = [...e.documentos].reverse().find((d) => d.chave === 'contrato' && d.versao.startsWith('assinado')) || [...e.documentos].reverse().find((d) => d.chave === 'contrato');
   const resumo: [string, string][] = [

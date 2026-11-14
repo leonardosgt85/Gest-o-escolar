@@ -2,7 +2,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db.js';
 import { can } from '../middleware/auth.js';
-import { NIVEIS_USUARIO, valorValido } from '../permissions/catalog.js';
+import { dataLimiteVencida } from '../services/accessService.js';
+import { NIVEIS_USUARIO, codigoValor, normalizarPermissoes } from '../permissions/catalog.js';
 import { HttpError, ehData, limpar, pick, semAcento, semAcentoSql, wrap } from '../util.js';
 
 const router = Router();
@@ -27,7 +28,7 @@ router.get(
         b.whereRaw(`${semAcentoSql('u.nome_completo')} like ?`, [t]).orWhereRaw('lower(u.email) like ?', [t]).orWhereRaw(`${semAcentoSql("coalesce(u.cargo, '')")} like ?`, [t]),
       );
     }
-    res.json(await q);
+    res.json((await q).map((u) => ({ ...u, permissoes_extras: normalizarPermissoes(u.permissoes_extras), expirado: dataLimiteVencida(u.data_limite) })));
   }),
 );
 
@@ -37,6 +38,7 @@ router.get(
   wrap(async (req, res) => {
     const u = await db('usuarios as u').leftJoin('grupos_permissao as g', 'g.id', 'u.grupo_id').select([...COLUNAS_PUBLICAS, 'u.foto']).where('u.id', req.params.id).first();
     if (!u) throw new HttpError(404, 'Usuário não encontrado.');
+    u.permissoes_extras = normalizarPermissoes(u.permissoes_extras);
     u.disciplinas_ids = (await db('usuario_disciplinas').where({ usuario_id: u.id }).select('disciplina_id')).map((r) => r.disciplina_id);
     res.json(u);
   }),
@@ -71,7 +73,7 @@ async function salvarDisciplinas(usuarioId, body, professor) {
 
 function extras(body) {
   const out = {};
-  for (const [k, v] of Object.entries(body.permissoes_extras || {})) if (valorValido(k, v)) out[k] = v;
+  for (const [k, v] of Object.entries(body.permissoes_extras || {})) { const c = codigoValor(k, v); if (c !== null) out[k] = c; } // guarda o código, não o rótulo
   return out;
 }
 

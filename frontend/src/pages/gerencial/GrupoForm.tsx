@@ -18,7 +18,7 @@ export default function GrupoForm() {
   const [nome, setNome] = useState('');
   const [vinculo, setVinculo] = useState('Todos');
   const [horarios, setHorarios] = useState<Record<string, { de: string; ate: string }>>({});
-  const [permissoes, setPermissoes] = useState<Record<string, string>>({});
+  const [permissoes, setPermissoes] = useState<Record<string, number>>({});
   const [salvando, setSalvando] = useState(false);
   const flash = useFlash();
 
@@ -32,6 +32,8 @@ export default function GrupoForm() {
   async function gravar() {
     setSalvando(true);
     try {
+      const problema = JANELAS.map(([k, rotulo]) => [rotulo, avisoJanela(k)]).find(([, a]) => a);
+      if (problema) { setAba(1); throw new Error(`Horários de acesso — ${problema[0]}: ${problema[1]}`); }
       const corpo = { nome, vinculo_perfil: vinculo, horarios, permissoes };
       if (novo) { const r = await api.post('/grupos', corpo); nav(`/gerencial/grupos/${r.id}`, { replace: true }); }
       else await api.put(`/grupos/${id}`, corpo);
@@ -39,7 +41,14 @@ export default function GrupoForm() {
     } catch (e) { flash.erro(e); } finally { setSalvando(false); }
   }
 
-  const setJanela = (k: string, campo: 'de' | 'ate', v: string) => setHorarios({ ...horarios, [k]: { de: horarios[k]?.de || '', ate: horarios[k]?.ate || '', [campo]: v } });
+  const setJanela = (k: string, campo: 'de' | 'ate', v: string) => setHorarios((h) => ({ ...h, [k]: { de: h[k]?.de || '', ate: h[k]?.ate || '', [campo]: v } }));
+  // regra do horário: início e fim juntos; fim depois do início (não atravessa a meia-noite)
+  const avisoJanela = (k: string) => {
+    const de = horarios[k]?.de || ''; const ate = horarios[k]?.ate || '';
+    if (!de && !ate) return '';
+    if (!de || !ate) return 'Preencha o início e o fim (ou deixe os dois em branco).';
+    return ate <= de ? 'O fim precisa ser depois do início (o horário não atravessa a meia-noite).' : '';
+  };
 
   return (
     <>
@@ -69,12 +78,13 @@ export default function GrupoForm() {
         {aba === 0 && <PermissionEditor valores={permissoes} onChange={setPermissoes} readOnly={readOnly} />}
         {aba === 1 && (
           <>
-            <Alert kind="info">Horário de Brasília. Campo em branco = liberado. Administradores não são limitados por horário. O horário de feriado ainda não é verificado (não há calendário).</Alert>
+            <Alert kind="info">Horário de Brasília. Preencha início e fim juntos; os dois em branco = liberado o dia todo. O fim deve ser depois do início (o horário não atravessa a meia-noite). Administradores não são limitados por horário. O horário de feriado ainda não é verificado (não há calendário).</Alert>
             {JANELAS.map(([k, rotulo]) => (
               <div className="perm-row perm-row-time" key={k}>
                 <div>{rotulo}: entre</div>
                 <input className="input" type="time" value={horarios[k]?.de || ''} disabled={readOnly} onChange={(e) => setJanela(k, 'de', e.target.value)} />
                 <input className="input" type="time" value={horarios[k]?.ate || ''} disabled={readOnly} onChange={(e) => setJanela(k, 'ate', e.target.value)} />
+                {avisoJanela(k) && <small className="err-txt" role="alert" style={{ gridColumn: '1 / -1', color: '#b45309' }}>{avisoJanela(k)}</small>}
               </div>
             ))}
           </>

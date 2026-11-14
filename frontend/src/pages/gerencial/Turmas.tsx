@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Alert, Crumbs, DataTable, Modal, useFlash } from '../../components/ui';
+import { Alert, Crumbs, DataTable, Modal, useFlash, useConfirmar, useLimpaErro } from '../../components/ui';
 
 type Flash = ReturnType<typeof useFlash>;
 
@@ -19,11 +19,13 @@ export default function Turmas() {
   const [modal, setModal] = useState<{ t?: Turma } | null>(null);
   const [entur, setEntur] = useState(false);
   const flash = useFlash();
-  const carregar = () => api.get<Turma[]>(`/cadastros/turmas${qs({ ano })}`).then(setLista).catch(flash.erro);
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
+  const carregar = () => api.get<Turma[]>(`/cadastros/turmas${qs({ ano })}`).then(setLista).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { void carregar(); }, [ano]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir(t: Turma) {
-    if (!window.confirm(`Excluir a turma ${t.serie} ${t.nome} (${t.turno})?`)) return;
+    if (!(await conf.pedir({ titulo: 'Excluir turma', texto: t.alunos > 0 ? <>A turma <b>{t.serie} {t.nome} ({t.turno})</b> tem <b>{t.alunos} aluno(s)</b> e não pode ser excluída. Inative-a em vez de excluir.</> : <>Excluir a turma <b>{t.serie} {t.nome} ({t.turno})</b>? Essa ação não pode ser desfeita.</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/cadastros/turmas/${t.id}`); flash.ok('Turma excluída.'); setSel(null); void carregar(); } catch (e) { flash.erro(e); }
   }
 
@@ -36,6 +38,7 @@ export default function Turmas() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="toolbar">
         {manut && <button className="btn btn-green" onClick={() => setModal({})}>Nova</button>}
         <button className="btn btn-orange" disabled={!sel || !manut} onClick={() => sel && setModal({ t: sel })}>Editar</button>
@@ -48,6 +51,7 @@ export default function Turmas() {
       ))}
       {manut && <PlanoAno ano={ano} onCopiado={() => void carregar()} onMsg={flash} />}
       <DataTable
+        loading={carregando}
         cartoes
         rows={lista}
         rowKey={(t) => t.id}
@@ -74,6 +78,7 @@ function TurmaModal({ turma, anoPadrao, onClose, onSaved }: { turma?: Turma; ano
   const [f, setF] = useState({ ano: turma?.ano ?? Number(anoPadrao), serie: turma?.serie ?? '', nome: turma?.nome ?? '', turno: turma?.turno ?? 'Manhã', ativo: turma?.ativo ?? true, limite_alunos: turma?.limite_alunos != null ? String(turma.limite_alunos) : '', valor_parcela: turma?.valor_parcela != null ? String(turma.valor_parcela).replace('.', ',') : '' });
   const [series, setSeries] = useState<string[]>([]);
   const [erro, setErro] = useState('');
+  useLimpaErro(erro, () => setErro(''), f);
   const [salvando, setSalvando] = useState(false);
   useEffect(() => { api.get<string[]>('/cadastros/series').then(setSeries).catch(() => {}); }, []);
   async function gravar() {

@@ -1,19 +1,26 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { can } from '../middleware/auth.js';
-import { valorValido } from '../permissions/catalog.js';
+import { codigoValor, normalizarPermissoes } from '../permissions/catalog.js';
 import { HttpError, limpar, wrap } from '../util.js';
 
 const router = Router();
 const VINCULOS = ['Todos', 'Apenas usuários nível avançado'];
 const JANELAS = ['seg_sex', 'sabado', 'domingo', 'feriado'];
 
+const ROTULO_JANELA = { seg_sex: 'segunda a sexta', sabado: 'sábado', domingo: 'domingo', feriado: 'feriado' };
+const minDe = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
+
+// Regra: início e fim andam juntos (ou os dois em branco = liberado) e o fim é depois do início.
+// O horário não atravessa a meia-noite (para liberar à noite, use dois dias).
 function lerHorarios(h = {}) {
   const out = {};
   for (const j of JANELAS) {
     const de = h[j]?.de || '';
     const ate = h[j]?.ate || '';
     for (const v of [de, ate]) if (v && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) throw new HttpError(400, 'Horário inválido (use HH:MM).');
+    if (!!de !== !!ate) throw new HttpError(400, `Horário de ${ROTULO_JANELA[j]}: preencha o início e o fim, ou deixe os dois em branco (liberado).`);
+    if (de && minDe(ate) <= minDe(de)) throw new HttpError(400, `Horário de ${ROTULO_JANELA[j]}: o fim (${ate}) precisa ser depois do início (${de}). O horário não atravessa a meia-noite.`);
     out[j] = { de, ate };
   }
   return out;
@@ -21,12 +28,13 @@ function lerHorarios(h = {}) {
 
 async function salvarPermissoes(trx, grupoId, permissoes = {}) {
   await trx('grupo_permissoes').where({ grupo_id: grupoId }).del();
+  // grava o CÓDIGO do valor (0, 1, 2…), não o rótulo; o rótulo pode mudar de texto sem quebrar os grupos
   const linhas = Object.entries(permissoes)
-    .filter(([chave, valor]) => valorValido(chave, valor))
-    .map(([chave, valor]) => ({ grupo_id: grupoId, chave, valor }));
+    .map(([chave, valor]) => [chave, codigoValor(chave, valor)])
+    .filter(([, c]) => c !== null)
+    .map(([chave, c]) => ({ grupo_id: grupoId, chave, valor: String(c) }));
   if (linhas.length) await trx('grupo_permissoes').insert(linhas);
 }
-
 router.get(
   '/',
   can('gerencial.grupos', 1),
@@ -48,7 +56,7 @@ router.get(
     const g = await db('grupos_permissao').where({ id: req.params.id }).first();
     if (!g) throw new HttpError(404, 'Grupo não encontrado.');
     const linhas = await db('grupo_permissoes').where({ grupo_id: g.id });
-    res.json({ ...g, permissoes: Object.fromEntries(linhas.map((l) => [l.chave, l.valor])) });
+    res.json({ ...g, permissoes: normalizarPermissoes(Object.fromEntries(linhas.map((l) => [l.chave, l.valor]))) });
   }),
 );
 

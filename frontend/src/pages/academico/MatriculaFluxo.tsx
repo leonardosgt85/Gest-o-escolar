@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth';
 import Icon from '../../components/Icon';
-import { Alert, Crumbs, Modal, useFlash } from '../../components/ui';
+import { Alert, Crumbs, Modal, useFlash, useLimpaErro } from '../../components/ui';
 import {
   CANAIS, NOMES_DOC, ORIGENS, SERIES, STATUS_ASSINATURA, TURNOS, baixar, brl, enviarArquivo, enviarPdf, quando, valorFinal, type Estado,
 } from '../../lib/matriculas';
@@ -36,7 +36,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
   const passo = efetivada ? 5 : m.passo;
   const travado = e.checks.enviado && m.assinatura_modo === 'autentique'; // dados contratuais bloqueados depois do envio
   const url = `/matriculas/${m.id}`;
-  const resp = e.opcoes.find((o) => o.chave === m.responsavel_chave) || null;
+  const resp = e.opcoes.find((o) => o.chaves.includes(m.responsavel_chave ?? '')) || null;
   const vf = valorFinal({ valor_parcela: m.valor_parcela, desconto_percentual: Number(f.desconto) || 0 });
   const series = [...new Set(e.turmas_disponiveis.map((p) => p.serie))];
   const igual = (a: string | null, b: string | null) => (a ?? '').trim().toLowerCase() === (b ?? '').trim().toLowerCase();
@@ -45,6 +45,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
   const semValor = !!m.serie && !!m.turno && !(Number(m.valor_parcela) > 0);
 
   async function exec<T>(fn: () => Promise<T>, ok?: string): Promise<T | undefined> {
+    flash.clear(); // o aviso anterior não fica na tela quando o usuário tenta de novo
     setOcupado(true);
     try { const r = await fn(); if (ok) flash.ok(ok); return r; } catch (er) { flash.erro(er); return undefined; } finally { setOcupado(false); }
   }
@@ -72,6 +73,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
     return () => window.clearInterval(t);
   }, [passo, m.assinatura_modo, e.checks.enviado, e.checks.assinado]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => { flash.clear(); }, [passo]); // eslint-disable-line react-hooks/exhaustive-deps
   const irPara = (n: number) => exec(async () => { await flush(); await salvar({ passo: n }); });
   const continuar = () => exec(async () => {
     await flush();
@@ -133,7 +135,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
         {e.opcoes.length === 0 && <div className="banner-warn"><Icon name="info" size={16} /><span>O aluno não tem responsável vinculado. Vincule pai, mãe ou responsável no <Link to={`/academico/alunos/${e.aluno.id}`}>cadastro do aluno</Link>.</span></div>}
         <div className="opt-grid">
           {e.opcoes.map((o) => (
-            <button key={o.chave} type="button" className={`opt${m.responsavel_chave === o.chave ? ' on' : ''}`} disabled={travado || !podeGravar} onClick={() => void exec(() => salvar({ responsavel_chave: o.chave }))}>
+            <button key={o.chave} type="button" className={`opt${o.chaves.includes(m.responsavel_chave ?? '') ? ' on' : ''}`} disabled={travado || !podeGravar} onClick={() => void exec(() => salvar({ responsavel_chave: o.chave }))}>
               <span className="radio" aria-hidden="true" />
               <span style={{ flex: 1, minWidth: 0 }}><b>{o.nome}</b><small>{o.rotulo} · {o.cpf ? `CPF ${o.cpf}` : 'sem CPF'} · {o.celular || 'sem celular'} · {o.email || 'sem e-mail'}</small></span>
             </button>

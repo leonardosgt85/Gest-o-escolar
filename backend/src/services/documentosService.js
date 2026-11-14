@@ -72,12 +72,24 @@ export function padrao(aluno, responsaveis) {
   return ['mae', 'pai', 'resp_pedagogico'].find((k) => responsaveis[k]) || null;
 }
 
+// A mesma pessoa em mais de um papel (ex.: mãe que também é resp. pedagógica) vira uma única opção, com os papéis juntos.
+export function agruparPorPessoa(responsaveis) {
+  const grupos = [];
+  for (const chave of ['pai', 'mae', 'resp_pedagogico']) {
+    const p = responsaveis[chave];
+    if (!p) continue;
+    const g = grupos.find((x) => x.pessoa.id === p.id);
+    if (g) g.chaves.push(chave); else grupos.push({ chave, chaves: [chave], pessoa: p });
+  }
+  return grupos.map((g) => ({ ...g, rotulo: g.chaves.map((c) => ROTULOS[c]).join(' / ') }));
+}
+
 export async function opcoesResponsaveis(alunoId) {
   const { aluno, responsaveis } = await carregar(alunoId);
-  const opcoes = Object.entries(responsaveis)
-    .filter(([, p]) => p)
-    .map(([chave, p]) => ({ chave, rotulo: ROTULOS[chave], nome: p.nome, cpf: formatarCpf(p.cpf) }));
-  return { opcoes, padrao: padrao(aluno, responsaveis) };
+  const grupos = agruparPorPessoa(responsaveis);
+  const opcoes = grupos.map((g) => ({ chave: g.chave, chaves: g.chaves, rotulo: g.rotulo, nome: g.pessoa.nome, cpf: formatarCpf(g.pessoa.cpf) }));
+  const pad = padrao(aluno, responsaveis);
+  return { opcoes, padrao: pad ? (grupos.find((g) => g.chaves.includes(pad))?.chave ?? pad) : null };
 }
 
 const brl = (n) => Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

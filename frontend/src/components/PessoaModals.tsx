@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, qs } from '../api';
 import { ACESSO, useAuth } from '../auth';
-import { Alert, DataTable, FormSections, Modal, Pagination, Tabs, type Section } from './ui';
+import { Alert, DataTable, FormSections, Modal, Pagination, Tabs, type Section, useLimpaErro } from './ui';
 
 export interface PessoaResumo { id: number; nome: string; cpf?: string | null; sexo?: string | null; email?: string | null; ultimo_login?: string | null; celular?: string | null; telefone?: string | null }
 
@@ -38,6 +38,7 @@ export function PessoaFormModal({ id, readOnly, initial, onClose, onSaved }: { i
   const [aba, setAba] = useState(0);
   const [form, setForm] = useState<Record<string, any>>({ endereco_comercial: {}, ref_comerciais: [], ...(initial || {}) });
   const [erro, setErro] = useState('');
+  useLimpaErro(erro, () => setErro(''), form);
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {

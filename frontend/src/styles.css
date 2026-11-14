@@ -385,6 +385,7 @@ ul.chamada .nome { flex: 1; font-weight: 500; }
 .pf button.f[aria-pressed="true"] { background: #b32a23; border-color: #b32a23; }
 .pf button:disabled { opacity: .6; cursor: default; }
 table.provas .nota { width: 64px; text-align: center; min-height: 40px; }
+table.provas .nota[aria-invalid="true"] { border-color: #c9463d; background: #fdecea; color: #8f241e; }
 table.resumo th, table.resumo td { min-width: 38px; padding: 4px 6px; white-space: nowrap; }
 table.resumo td.f { background: #fdeceb; color: #b32a23; font-weight: 700; }
 table.resumo .sticky { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 180px; }

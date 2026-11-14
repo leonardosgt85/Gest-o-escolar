@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
-import { Crumbs, Alert, DataTable, Modal, useFlash } from '../../components/ui';
+import { Crumbs, Alert, DataTable, Modal, useFlash, useConfirmar } from '../../components/ui';
 import { fmtDataHora } from '../../lib/utils';
 
 interface Grupo { id: number; nome: string; vinculo_perfil: string; qtd_usuarios: number }
@@ -15,13 +15,15 @@ export default function GruposPermissao() {
   const [sel, setSel] = useState<Grupo | null>(null);
   const [usuarios, setUsuarios] = useState<UsuarioResumo[] | null>(null);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
   const manut = can('gerencial.grupos', ACESSO.manutencao);
 
-  const carregar = () => api.get<Grupo[]>('/grupos').then(setGrupos).catch(flash.erro);
+  const carregar = () => api.get<Grupo[]>('/grupos').then(setGrupos).catch(flash.erro).finally(() => setCarregando(false));
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir() {
-    if (!sel || !window.confirm(`Excluir o grupo "${sel.nome}"?`)) return;
+    if (!sel || !(await conf.pedir({ titulo: 'Excluir grupo', texto: sel.qtd_usuarios > 0 ? <>O grupo <b>{sel.nome}</b> tem <b>{sel.qtd_usuarios} usuário(s)</b>. Mova-os para outro grupo antes de excluir.</> : <>Excluir o grupo <b>{sel.nome}</b>? Essa ação não pode ser desfeita.</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/grupos/${sel.id}`); setSel(null); flash.ok('Grupo excluído.'); carregar(); } catch (e) { flash.erro(e); }
   }
   async function duplicar() {
@@ -45,6 +47,7 @@ export default function GruposPermissao() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="toolbar">
         {manut && <button className="btn btn-green" onClick={() => nav('/gerencial/grupos/novo')}>Novo</button>}
         <button className="btn btn-orange" disabled={!sel} onClick={() => sel && nav(`/gerencial/grupos/${sel.id}`)}>{manut ? 'Editar' : 'Consultar'}</button>
@@ -54,6 +57,7 @@ export default function GruposPermissao() {
         <button className="btn" onClick={() => window.print()}>Imprimir</button>
       </div>
       <DataTable
+        loading={carregando}
         rows={grupos}
         rowKey={(g) => g.id}
         selectedKey={sel?.id}

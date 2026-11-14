@@ -80,8 +80,8 @@ export async function criar(ctx, alunoId, b) {
   const ano = Number(b.ano);
   if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) throw new HttpError(400, 'Ano inválido.');
   if (!(await db('alunos').where({ id: alunoId }).first())) throw new HttpError(404, 'Aluno não encontrado.');
-  const qtd = Number(b.quantidade || 1);
-  if (!Number.isInteger(qtd) || qtd < 1 || qtd > 99) throw new HttpError(400, 'Quantidade inválida.');
+  const qtd = b.quantidade === undefined || b.quantidade === null || b.quantidade === '' ? 1 : Number(b.quantidade);
+  if (!Number.isInteger(qtd) || qtd < 1 || qtd > 99) throw new HttpError(400, 'Quantidade inválida: informe um número inteiro de 1 a 99.');
   let tipo = b.tipo, descricao = txt(b.descricao), porBim = false, unit = null, catalogoId = null;
   if (b.catalogo_id) {
     const c = await db('itens_catalogo').where({ id: Number(b.catalogo_id), ano }).first();

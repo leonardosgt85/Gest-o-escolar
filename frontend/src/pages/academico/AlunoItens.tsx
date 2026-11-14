@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth';
-import { Alert, Crumbs, Modal, useFlash } from '../../components/ui';
+import { Alert, Crumbs, Modal, useFlash, useConfirmar } from '../../components/ui';
 import { brl } from '../../lib/matriculas';
 import { fmtData } from '../../lib/utils';
 import { TIPO_ITEM, type ItemCatalogo } from '../gerencial/ItensCatalogo';
@@ -24,6 +24,7 @@ export default function AlunoItens() {
   const fin = can('academico.itens.pagamento', 1);
   const liberar = can('academico.itens.liberar', 1);
   const flash = useFlash();
+  const conf = useConfirmar();
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [d, setD] = useState<Dados | null>(null);
   const [novo, setNovo] = useState(false);
@@ -44,11 +45,11 @@ export default function AlunoItens() {
     try { const r = await api.post<{ entregues: number }>(`/itens/${i.id}/entregar-liberadas`); flash.ok(`${r.entregues} entrega(s) marcada(s).`); void carregar(); } catch (e) { flash.erro(e); }
   }
   async function estornar(p: Pag) {
-    if (!window.confirm(`Estornar o pagamento de ${brl(p.valor)}?`)) return;
+    if (!(await conf.pedir({ titulo: 'Estornar pagamento', texto: <>Estornar o pagamento de <b>{brl(p.valor)}</b>? O pagamento é removido, o saldo do item volta a ficar em aberto e o estorno fica registrado no histórico do item.</>, confirmar: 'Estornar', perigo: true }))) return;
     try { await api.del(`/itens/pagamentos/${p.id}`); flash.ok('Pagamento estornado.'); void carregar(); } catch (e) { flash.erro(e); }
   }
   async function cancelar(i: Item) {
-    if (!window.confirm(`Cancelar “${i.descricao}”?`)) return;
+    if (!(await conf.pedir({ titulo: 'Cancelar item', texto: <>Cancelar <b>{i.descricao}</b>? Ele sai da lista do aluno. Só é possível cancelar se não houver pagamentos nem entregas lançados.</>, confirmar: 'Cancelar item', cancelar: 'Voltar', perigo: true }))) return;
     try { await api.del(`/itens/${i.id}`); flash.ok('Item cancelado.'); void carregar(); } catch (e) { flash.erro(e); }
   }
 
@@ -60,6 +61,7 @@ export default function AlunoItens() {
         {d && <div className="muted">{d.aluno.nome}{d.matricula?.serie ? ` · ${d.matricula.serie}${d.matricula.turno ? ` · ${d.matricula.turno}` : ''}` : ' · sem matrícula neste ano'}</div>}
       </div></div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
       <div className="toolbar">
         {grav && <button className="btn btn-green" onClick={() => setNovo(true)}>+ Item</button>}
         <label className="switch">Ano letivo <input className="input" style={{ width: 90, marginLeft: 6 }} type="number" min={2000} max={2100} value={ano} onChange={(e) => setAno(e.target.value)} /></label>
@@ -128,10 +130,12 @@ function NovoItem({ d, fin, onClose, onSaved }: { d: Dados; fin: boolean; onClos
   const cat = d.catalogo.find((c) => String(c.id) === f.catalogo_id);
   const livre = !f.catalogo_id;
   const porBim = cat ? cat.por_bimestre : f.tipo === 'material';
-  const valorCalc = cat ? cat.valor * (Number(f.quantidade) || 1) : null;
+  const valorCalc = cat ? cat.valor * (Number(f.quantidade) || 0) : null;
   async function gravar() {
     setErro('');
-    const corpo: Record<string, unknown> = { ano: d.ano, catalogo_id: f.catalogo_id ? Number(f.catalogo_id) : undefined, tipo: f.tipo, descricao: f.descricao, tamanho: f.tamanho, quantidade: Number(f.quantidade) || 1, bimestre_inicio: Number(f.bimestre_inicio) };
+    const qtd = Number(f.quantidade);
+    if (!Number.isInteger(qtd) || qtd < 1 || qtd > 99) { setErro('Quantidade inválida: informe um número inteiro de 1 a 99.'); return; }
+    const corpo: Record<string, unknown> = { ano: d.ano, catalogo_id: f.catalogo_id ? Number(f.catalogo_id) : undefined, tipo: f.tipo, descricao: f.descricao, tamanho: f.tamanho, quantidade: qtd, bimestre_inicio: Number(f.bimestre_inicio) };
     if (livre || (fin && f.valor_total)) corpo.valor_total = f.valor_total;
     if (f.pagar && fin) corpo.pagamento = { valor: f.pg_valor || (valorCalc !== null ? String(valorCalc) : f.valor_total), forma: f.pg_forma, parcelas: Number(f.pg_parcelas) || 1, observacao: f.pg_obs };
     try { await api.post(`/itens/aluno/${d.aluno.id}`, corpo); onSaved(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }

@@ -5,7 +5,7 @@ import { useAuth } from '../../auth';
 import PessoaCombo from '../../components/PessoaCombo';
 import type { PessoaResumo } from '../../components/PessoaModals';
 import GerarDocumentos from '../../components/GerarDocumentos';
-import { Crumbs, Alert, DataTable, FormSections, Modal, Pagination, Tabs, useFlash, type FieldDef, type Section } from '../../components/ui';
+import { Crumbs, Alert, DataTable, FormSections, Modal, Pagination, Tabs, useFlash, type FieldDef, type Section, useLimpaErro } from '../../components/ui';
 import { fmtDataHora, idade, lerArquivoComoDataUrl } from '../../lib/utils';
 import type { AlunoLinha } from './Alunos';
 
@@ -153,6 +153,8 @@ export default function AlunoForm() {
   const [naoAchou, setNaoAchou] = useState(false);
   const [irmao, setIrmao] = useState(false);
   const flash = useFlash();
+  useLimpaErro(flash.msg?.kind === 'error' ? flash.msg : null, flash.clear, form); // o erro some quando o usuário corrige o campo
+  useEffect(() => { flash.clear(); }, [aba]); // eslint-disable-line react-hooks/exhaustive-deps
   const arquivo = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

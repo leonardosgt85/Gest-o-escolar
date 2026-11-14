@@ -33,12 +33,13 @@ async function contexto(ctx, turmaId, disciplinaId, { lancar = false } = {}) {
   const turma = await db('turmas').where({ id: turmaId }).first();
   const disc = await db('disciplinas').where({ id: disciplinaId }).first();
   if (!turma || !disc) throw new HttpError(404, 'Turma ou disciplina não encontrada.');
-  if (!(await db('matriz_curricular').where({ ano: turma.ano, serie: turma.serie, disciplina_id: disc.id }).first())) throw new HttpError(404, 'Esta disciplina não está na matriz da série desta turma.');
+  const matriz = await db('matriz_curricular').where({ ano: turma.ano, serie: turma.serie, disciplina_id: disc.id }).first();
+  if (!matriz) throw new HttpError(404, 'Esta disciplina não está na matriz da série desta turma.');
   const dono = e.prof && !!(await db('usuario_disciplinas').where({ usuario_id: e.uid, disciplina_id: disc.id }).first());
   const pode = e.tudo || dono;
   if (!pode && !(e.ver && !lancar)) throw new HttpError(403, lancar ? 'Você só pode lançar nas suas disciplinas.' : 'Você não tem acesso a esta disciplina.');
   if (lancar && !pode) throw new HttpError(403, 'Você só pode lançar nas suas disciplinas.');
-  return { turma, disc, podeLancar: pode, uid: e.uid };
+  return { turma, disc, matriz, podeLancar: pode, uid: e.uid };
 }
 
 const alunosDaTurma = (turma) => db('matriculas as m').join('alunos as a', 'a.id', 'm.aluno_id')
@@ -68,7 +69,7 @@ export const media = (pm, pb, sim) => {
 
 export async function abrir(ctx, turmaId, disciplinaId) {
   const c = await contexto(ctx, turmaId, disciplinaId);
-  return { turma: c.turma, disciplina: c.disc, podeLancar: c.podeLancar, alunos: await alunosDaTurma(c.turma) };
+  return { turma: turmaPublica(c.turma), disciplina: c.disc, podeLancar: c.podeLancar, diasAula: (c.matriz.dias_semana || []).map(Number), alunos: await alunosDaTurma(c.turma) };
 }
 
 export async function dia(ctx, turmaId, disciplinaId, dataIso) {
@@ -95,14 +96,30 @@ export async function salvarDia(ctx, turmaId, disciplinaId, b) {
   return { ok: true, faltas: faltas.size, presentes: alunos.length - faltas.size };
 }
 
+/** Exclui a chamada de um dia (lançada por engano): apaga o registro da aula e as presenças/faltas dele. */
+export async function excluirDia(ctx, turmaId, disciplinaId, dataIso) {
+  const c = await contexto(ctx, turmaId, disciplinaId, { lancar: true });
+  const d = data(dataIso, c.turma.ano);
+  const reg = await db('diario_aulas').where({ turma_id: c.turma.id, disciplina_id: c.disc.id, data: d }).first();
+  if (!reg) throw new HttpError(404, 'Não há chamada lançada neste dia.');
+  await db.transaction(async (trx) => {
+    await trx('diario_frequencia').where({ aula_id: reg.id }).del();
+    await trx('diario_aulas').where({ id: reg.id }).del();
+  });
+  return { ok: true };
+}
+
 export async function salvarNotas(ctx, turmaId, disciplinaId, b) {
   const c = await contexto(ctx, turmaId, disciplinaId, { lancar: true });
   const bimestre = bim(b.bimestre);
-  const alunos = (await alunosDaTurma(c.turma)).map((a) => a.id);
+  const lista = await alunosDaTurma(c.turma);
+  const alunos = lista.map((a) => a.id);
+  const nomes = new Map(lista.map((a) => [a.id, a.nome_completo]));
   const linhas = (Array.isArray(b.notas) ? b.notas : []).map((n) => {
     const aluno_id = Number(n.aluno_id);
     if (!alunos.includes(aluno_id)) throw new HttpError(400, 'Aluno que não pertence à turma.');
-    return { aluno_id, pm: nota(n.pm, 'P.M.'), pb: nota(n.pb, 'P.B.'), sim: nota(n.sim, 'Simulado') };
+    const de = nomes.get(aluno_id);
+    return { aluno_id, pm: nota(n.pm, `P.M. de ${de}`), pb: nota(n.pb, `P.B. de ${de}`), sim: nota(n.sim, `Simulado de ${de}`) };
   });
   await db.transaction(async (trx) => {
     for (const l of linhas) {
@@ -115,6 +132,9 @@ export async function salvarNotas(ctx, turmaId, disciplinaId, b) {
 }
 
 // Visão do diário (como o modelo de papel): alunos × dias, faltas, P.M., P.B., Simulado e média geral.
+// A turma que sai nas telas do diário não leva dado financeiro (valor da parcela) nem o limite de alunos.
+const turmaPublica = (t) => ({ id: t.id, ano: t.ano, serie: t.serie, nome: t.nome, turno: t.turno });
+
 export async function resumo(ctx, turmaId, disciplinaId, bimestre) {
   const c = await contexto(ctx, turmaId, disciplinaId);
   const b = bim(bimestre);
@@ -137,7 +157,7 @@ export async function resumo(ctx, turmaId, disciplinaId, bimestre) {
     const num = (v) => (v === null || v === undefined ? null : Number(v));
     return { aluno_id: a.id, nome: a.nome_completo, presenca, faltas, pm: num(n.pm), pb: num(n.pb), sim: num(n.sim), media: media(num(n.pm), num(n.pb), num(n.sim)) };
   });
-  return { turma: c.turma, disciplina: c.disc, bimestre: b, podeLancar: c.podeLancar, dias, linhas };
+  return { turma: turmaPublica(c.turma), disciplina: c.disc, bimestre: b, podeLancar: c.podeLancar, dias, linhas };
 }
 
 /* ---------- relatório: diário de classe mensal ---------- */
@@ -178,7 +198,7 @@ export async function dadosMensais(ctx, turmaId, disciplinaId, ano, mes) {
   const professores = await db('usuarios as u').join('usuario_disciplinas as ud', 'ud.usuario_id', 'u.id')
     .where({ 'ud.disciplina_id': c.disc.id, 'u.professor': true, 'u.situacao': 'Ativo' }).orderBy('u.nome_completo').pluck('u.nome_completo');
   return {
-    turma: c.turma, disciplina: c.disc, ano: a, mes: m, diasNoMes: dias, bimestre, professores,
+    turma: turmaPublica(c.turma), disciplina: c.disc, ano: a, mes: m, diasNoMes: dias, bimestre, professores,
     aulas: aulas.map((x) => ({ dia: x.dia, data: iso(x.data), aulas: x.aulas, conteudo: x.conteudo })),
     linhas,
   };

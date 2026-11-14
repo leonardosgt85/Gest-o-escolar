@@ -4,7 +4,7 @@ import { api, qs } from '../../api';
 import { useAuth } from '../../auth';
 import { PessoaPickerModal } from '../../components/PessoaModals';
 import GerarDocumentos from '../../components/GerarDocumentos';
-import { Crumbs, Alert, DataTable, Modal, Pagination, useFlash } from '../../components/ui';
+import { Crumbs, Alert, DataTable, Modal, Pagination, useFlash, useConfirmar } from '../../components/ui';
 import EnvioRematriculas from '../../components/EnvioRematriculas';
 import Icon from '../../components/Icon';
 import { fmtData, fmtDataHora, idade } from '../../lib/utils';
@@ -37,12 +37,14 @@ export default function Alunos() {
   const [pickResp, setPickResp] = useState(false);
   const [envioAluno, setEnvioAluno] = useState<AlunoLinha | null>(null);
   const flash = useFlash();
+  const [carregando, setCarregando] = useState(true);
+  const conf = useConfirmar();
   const timer = useRef<number>();
 
   const buscar = (pagina = 1) => {
     const { responsavel_nome, ...f } = filtros;
     void responsavel_nome;
-    return api.get(`/alunos${qs({ ...f, q: rapido, situacao_mat: sit, pagina, por_pagina: porPagina })}`).then((r) => { setRes(r); }).catch(flash.erro);
+    return api.get(`/alunos${qs({ ...f, q: rapido, situacao_mat: sit, pagina, por_pagina: porPagina })}`).then((r) => { setRes(r); }).catch(flash.erro).finally(() => setCarregando(false));
   };
   useEffect(() => { try { sessionStorage.setItem('csm.alunos.filtros', JSON.stringify({ filtros, rapido, porPagina, sit })); } catch { /* sem storage */ } }, [filtros, rapido, porPagina, sit]);
   useEffect(() => {
@@ -52,7 +54,7 @@ export default function Alunos() {
   }, [filtros, rapido, porPagina, sit]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir(a: AlunoLinha) {
-    if (!window.confirm(`Excluir o aluno "${a.nome_completo}"?`)) return;
+    if (!(await conf.pedir({ titulo: 'Excluir aluno', texto: <>Excluir o aluno <b>{a.nome_completo}</b>? Os dados de matrícula, documentos e material ligados a ele deixam de aparecer nas listas.</>, confirmar: 'Excluir', perigo: true }))) return;
     try { await api.del(`/alunos/${a.id}`); flash.ok('Aluno excluído.'); buscar(res.pagina); } catch (e) { flash.erro(e); }
   }
 
@@ -72,6 +74,7 @@ export default function Alunos() {
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
+      {conf.dialog}
 
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="grid">
@@ -118,6 +121,7 @@ export default function Alunos() {
       </div>
 
       <DataTable
+        loading={carregando}
         clickable
         rows={res.itens}
         rowKey={(a) => a.id}
