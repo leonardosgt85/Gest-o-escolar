@@ -339,3 +339,54 @@ table.data { min-width: 560px; }
 .rd-nome { min-width: 150px; }
 .rd-cel { min-width: 46px; width: 54px; text-align: center; }
 .rd-tot td:first-child { font-weight: 700; text-align: left; padding: 4px 6px; background: #eef1f7; }
+
+/* Cadastros do diário */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: #fff; cursor: pointer; font-weight: 500; }
+.chip:hover:not(:disabled) { border-color: var(--primary); }
+.chip[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+.chip.novo { border-style: dashed; color: var(--primary); font-weight: 700; }
+.chip:disabled { opacity: .6; cursor: default; }
+.radio-row { display: flex; gap: 18px; flex-wrap: wrap; }
+.radio-row label { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; cursor: pointer; }
+.dias { display: flex; gap: 6px; flex-wrap: wrap; }
+.dias .chip { min-width: 52px; justify-content: center; padding: 6px 10px; }
+@media (max-width: 600px) {
+  .chip, .radio-row label { min-height: 44px; }
+  table.data.cartoes { min-width: 0; }
+  table.data.cartoes thead { display: none; }
+  table.data.cartoes, table.data.cartoes tbody, table.data.cartoes tr, table.data.cartoes td { display: block; width: 100%; }
+  table.data.cartoes tr { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; padding: 6px 4px; background: #fff; }
+  table.data.cartoes tr.selected { border-color: var(--primary); }
+  table.data.cartoes td { display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 6px 10px; text-align: right; }
+  table.data.cartoes td::before { content: attr(data-label); font-weight: 600; color: var(--muted); text-align: left; }
+  table.data.cartoes td.empty { display: block; text-align: center; }
+  table.data.cartoes td.empty::before { content: none; }
+}
+
+/* Diário de classe */
+.dia-barra { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.dia-bim, .dia-aulas { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; color: var(--muted); }
+.dia-bim .input, .dia-aulas .input { width: 80px; }
+.dia-data { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dia-data .input[type=date] { width: auto; min-height: 44px; }
+.dia-data .btn { min-height: 44px; min-width: 44px; justify-content: center; font-size: 20px; }
+.dia-aulas { margin-left: auto; }
+.dia-resumo-chamada { margin-bottom: 8px; font-size: 15px; }
+ul.chamada { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+ul.chamada li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: #fff; min-height: 56px; }
+ul.chamada li:last-child { border-bottom: 0; }
+ul.chamada li.falta { background: #fdeceb; }
+ul.chamada .n { width: 24px; color: var(--muted); font-size: 13px; text-align: right; }
+ul.chamada .nome { flex: 1; font-weight: 500; }
+.pf { display: inline-flex; gap: 6px; }
+.pf button { min-width: 52px; min-height: 44px; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-weight: 700; font-size: 16px; cursor: pointer; }
+.pf button[aria-pressed="true"] { background: #187a44; border-color: #187a44; color: #fff; }
+.pf button.f[aria-pressed="true"] { background: #b32a23; border-color: #b32a23; }
+.pf button:disabled { opacity: .6; cursor: default; }
+table.provas .nota { width: 64px; text-align: center; min-height: 40px; }
+table.resumo th, table.resumo td { min-width: 38px; padding: 4px 6px; white-space: nowrap; }
+table.resumo td.f { background: #fdeceb; color: #b32a23; font-weight: 700; }
+table.resumo .sticky { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 180px; }
+table.resumo thead .sticky { background: #eef1f7; }
+@media (max-width: 600px) { .dia-aulas { margin-left: 0; } ul.chamada li { padding: 6px 8px; } }

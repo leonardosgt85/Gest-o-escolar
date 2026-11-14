@@ -14,6 +14,8 @@ const PATHS = {
   chevron: 'M9 6l6 6-6 6',
   userPlus: 'M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM20 8v6M23 11h-6',
   edit: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z',
+  cadastros: 'M4 4h16v16H4zM4 9h16M9 9v11',
+  diario: 'M5 3h12a2 2 0 0 1 2 2v16H7a2 2 0 0 1-2-2zM9 7h6M9 11h6M9 15h3',
   relatorios: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   dashboard: 'M3 3h8v9H3zM13 3h8v5h-8zM13 10h8v11h-8zM3 14h8v7H3z',
   fileDown: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5',

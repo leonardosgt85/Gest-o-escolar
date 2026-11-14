@@ -101,8 +101,8 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
           <datalist id="series">{SERIES.map((s) => <option key={s} value={s} />)}</datalist>
         </div>
       </div>
-      {series.length === 0 && <div className="banner-warn"><Icon name="info" size={16} /><span>Nenhum valor cadastrado para {m.ano}. Cadastre a série, o turno e o valor em <Link to="/academico/valores">Valores do ano letivo</Link>.</span></div>}
-      {semValor && <div className="banner-warn"><Icon name="info" size={16} /><span>Não há valor cadastrado para {m.serie} ({m.turno}) em {m.ano}. <Link to="/academico/valores">Cadastrar em Valores do ano letivo</Link>.</span></div>}
+      {series.length === 0 && <div className="banner-warn"><Icon name="info" size={16} /><span>Nenhum valor cadastrado para {m.ano}. Informe o valor da parcela ao cadastrar a turma em <Link to="/gerencial/cadastros/turmas">Turmas</Link>.</span></div>}
+      {semValor && <div className="banner-warn"><Icon name="info" size={16} /><span>Não há valor cadastrado para {m.serie} ({m.turno}) em {m.ano}. <Link to="/gerencial/cadastros/turmas">Informar o valor na turma</Link>.</span></div>}
       <div><div className="f-lbl">Turno</div><Seg rotulo="Turno" itens={TURNOS.map((t) => ({ chave: t, label: t }))} valor={m.turno} desabilitado={travado || !podeGravar} onChange={(v) => void exec(() => salvar({ turno: v }))} /></div>
       <div><div className="f-lbl">Como a família confirmou</div><Seg rotulo="Origem da confirmação" itens={ORIGENS.map((t) => ({ chave: t, label: t }))} valor={m.origem} desabilitado={!podeGravar} onChange={(v) => void exec(() => salvar({ origem: v }))} /></div>
       <div className="stack" style={{ maxWidth: 780 }}>
@@ -143,31 +143,37 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
         </div>
         <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 12 }}>
           {vf != null && m.parcelas ? <>Parcela com desconto: <b>{brl(vf)}</b> · anuidade: <b>{brl(Math.round(vf * m.parcelas * 100) / 100)}</b>. </> : null}
-          O valor vem de <Link to="/academico/valores">Valores do ano letivo</Link> e fica gravado nesta matrícula e no contrato; mudar a tabela depois não altera quem já contratou.
+          O valor vem da turma (<Link to="/gerencial/cadastros/turmas">Turmas</Link>) e fica gravado nesta matrícula e no contrato; mudar o valor da turma depois não altera quem já contratou.
         </p>
       </div>
+    </>
+  );
+
+  const arq = (d: Estado['docs_aluno'][number]) => (
+    <>
+      <input ref={(el) => { arquivos.current[`doc-${d.chave}`] = el; }} type="file" accept="application/pdf,image/*" hidden onChange={(ev) => { const file = ev.target.files?.[0]; ev.target.value = ''; if (file) void exec(async () => setE(await enviarArquivo(`/api${url}/anexos/${d.chave}?arquivo=${encodeURIComponent(file.name)}`, file)), `${d.rotulo} enviado.`); }} />
+      {d.arquivo && <a className="btn btn-sm" href={`/api${url}/documentos/${d.arquivo.id}/download`} target="_blank" rel="noreferrer">Ver</a>}
+      <button className="btn btn-sm" disabled={ocupado || !podeGravar || efetivada} onClick={() => arquivos.current[`doc-${d.chave}`]?.click()}><Icon name="upload" size={14} /> {d.arquivo ? 'Trocar' : 'Anexar'}</button>
+      {d.arquivo && !efetivada && <button className="lk" style={{ fontSize: 12 }} disabled={ocupado || !podeGravar} onClick={() => void exec(async () => setE(await api.del<Estado>(`${url}/anexos/${d.chave}`)))}>Remover</button>}
     </>
   );
 
   const passo3 = (
     <div className="cols">
       <div>
-        <div className="f-lbl">Documentos do aluno {e.exige_upload ? 'enviados' : 'entregues'}</div>
-        {e.exige_upload ? (
-          <>
-            <div className="stack">
-              {e.docs_aluno.map((d) => (
-                <div key={d.chave} className="row-card" style={{ flexWrap: 'wrap' }}>
-                  <span className={`chip ${d.ok ? 'ok' : 'warn'}`}>{d.ok ? 'Recebido' : 'Pendente'}</span>
-                  <span className="grow">{d.rotulo}{d.arquivo && <small style={{ display: 'block', color: 'var(--muted)', fontSize: 12 }}>{d.arquivo.nome} · {quando(d.arquivo.enviado_em)}</small>}</span>
-                  <input ref={(el) => { arquivos.current[`doc-${d.chave}`] = el; }} type="file" accept="application/pdf,image/*" hidden onChange={(ev) => { const file = ev.target.files?.[0]; ev.target.value = ''; if (file) void exec(async () => setE(await enviarArquivo(`/api${url}/anexos/${d.chave}?arquivo=${encodeURIComponent(file.name)}`, file)), `${d.rotulo} enviado.`); }} />
-                  {d.arquivo && <a className="btn btn-sm" href={`/api${url}/documentos/${d.arquivo.id}/download`} target="_blank" rel="noreferrer">Ver</a>}
-                  <button className="btn btn-sm" disabled={ocupado || !podeGravar || efetivada} onClick={() => arquivos.current[`doc-${d.chave}`]?.click()}><Icon name="upload" size={14} /> {d.ok ? 'Trocar' : 'Enviar'}</button>
-                  {d.ok && !efetivada && <button className="lk" style={{ fontSize: 12 }} disabled={ocupado || !podeGravar} onClick={() => void exec(async () => setE(await api.del<Estado>(`${url}/anexos/${d.chave}`)))}>Remover</button>}
-                </div>
-              ))}
-            </div>
-            <p style={{ margin: '8px 0 0', color: 'var(--muted)', fontSize: 12 }}>Na rematrícula cada documento só vale com o arquivo anexado (PDF ou foto, até 10 MB). A família pode enviar pelo link abaixo.</p>
+        <div className="f-lbl">Documentos do aluno entregues</div>
+          <div className="stack">
+            {e.docs_aluno.map((d) => (
+              <div key={d.chave} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button type="button" style={{ flex: '1 1 220px' }} className={`opt${d.ok ? ' on' : ''}`} aria-pressed={d.ok} disabled={!podeGravar} onClick={() => void exec(() => salvar({ docs_entregues: Object.fromEntries(e.docs_aluno.map((x) => [x.chave, x.chave === d.chave ? !x.ok : x.ok])) }))}>
+                  <span className="box" aria-hidden="true">{d.ok && <Check />}</span><span style={{ flex: 1 }}>{d.rotulo}{d.arquivo && <small style={{ display: 'block', color: 'var(--muted)', fontSize: 12 }}>{d.arquivo.nome}</small>}</span>
+                </button>
+                {arq(d)}
+              </div>
+            ))}
+            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 12 }}>Marque como entregue; anexar o arquivo (PDF ou foto, até 10 MB) é opcional e já marca como entregue. Na rematrícula a família também pode enviar pelo link abaixo.</p>
+          </div>
+        {e.exige_upload && (
             <div className="card" style={{ marginTop: 12, padding: 12 }}>
               <div className="f-lbl">Link para a família</div>
               {!prontoLink && <p style={{ margin: '0 0 8px', color: 'var(--muted)', fontSize: 12.5 }}>Defina série, turno, responsável e valores (passos 1 e 2) para liberar o link.</p>}
@@ -184,15 +190,6 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
                 {e.portal.ativo && !efetivada && <button className="btn btn-danger" disabled={ocupado || !podeGravar} onClick={() => void exec(async () => setE(await api.del<Estado>(`${url}/portal`)), 'Link cancelado: o endereço enviado deixou de funcionar.')}>Cancelar link</button>}
               </div>
             </div>
-          </>
-        ) : (
-          <div className="stack">
-            {e.docs_aluno.map((d) => (
-              <button key={d.chave} type="button" className={`opt${d.ok ? ' on' : ''}`} aria-pressed={d.ok} disabled={!podeGravar} onClick={() => void exec(() => salvar({ docs_entregues: Object.fromEntries(e.docs_aluno.map((x) => [x.chave, x.chave === d.chave ? !x.ok : x.ok])) }))}>
-                <span className="box" aria-hidden="true">{d.ok && <Check />}</span><span style={{ flex: 1 }}>{d.rotulo}</span>
-              </button>
-            ))}
-          </div>
         )}
       </div>
       <div>
@@ -432,7 +429,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
   );
 
   const corpos: ReactNode[] = [passo1, passo2, passo3, m.assinatura_modo === 'manual' ? passo4Manual : passo4Auto, passo5];
-  const dicas = ['', '', e.exige_upload ? 'Os documentos precisam do arquivo anexado (pela família ou pela secretaria) para efetivar.' : 'Os documentos não bloqueiam o avanço, mas a matrícula só é efetivada com todos entregues.', e.checks.assinado ? 'Assinatura concluída.' : 'Aguardando a assinatura para continuar.', e.checks.pode_efetivar ? 'Tudo certo para efetivar.' : 'Resolva as pendências acima para efetivar.'];
+  const dicas = ['', '', 'Os documentos não bloqueiam o avanço, mas a matrícula só é efetivada com todos entregues (marcados ou anexados).', e.checks.assinado ? 'Assinatura concluída.' : 'Aguardando a assinatura para continuar.', e.checks.pode_efetivar ? 'Tudo certo para efetivar.' : 'Resolva as pendências acima para efetivar.'];
   const bloqueia = !podeGravar || ocupado || (passo === 4 && !e.checks.assinado) || (passo === 5 && !e.checks.pode_efetivar);
 
   return (

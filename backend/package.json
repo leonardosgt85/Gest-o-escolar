@@ -13,7 +13,8 @@
     "import:sae": "node scripts/import-sae.js",
     "autentique:schema": "node scripts/autentique-introspect.cjs --json",
     "autentique:sandbox": "node scripts/autentique-sandbox-test.cjs",
-    "autentique:testar": "node scripts/testar-autentique.js"
+    "autentique:testar": "node scripts/testar-autentique.js",
+    "seed:turmas": "knex seed:run --specific=002_turmas_matriz_2026.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

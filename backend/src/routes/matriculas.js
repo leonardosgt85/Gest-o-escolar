@@ -12,10 +12,17 @@ const ler = can('academico.alunos', 1);
 const gravar = can('academico.alunos', 2);
 const id = (req) => Number(req.params.id);
 
-const verValores = can('academico.valores', 1);
 const gravarValores = can('academico.valores', 2);
 
 router.get('/anos-letivos', ler, wrap(async (req, res) => res.json(await db('anos_letivos').orderBy('ano', 'desc'))));
+router.post('/anos-letivos', gravarValores, wrap(async (req, res) => {
+  const ano = Number(req.body.ano);
+  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) throw new HttpError(400, 'Informe um ano válido (ex.: 2027).');
+  if (await db('anos_letivos').where({ ano }).first()) throw new HttpError(409, `O ano letivo ${ano} já existe.`);
+  const ref = await db('anos_letivos').where('ano', '<', ano).orderBy('ano', 'desc').first();
+  await db('anos_letivos').insert({ ano, ativo: false, parcelas: ref?.parcelas ?? 12, dia_vencimento: ref?.dia_vencimento ?? 10 });
+  res.status(201).json({ ok: true });
+}));
 router.put('/anos-letivos/:ano', gravarValores, wrap(async (req, res) => {
   const { parcelas, dia_vencimento, valor_parcela, abertura, encerramento, divulgacao_valores, ativo } = req.body;
   const up = {};
@@ -26,15 +33,10 @@ router.put('/anos-letivos/:ano', gravarValores, wrap(async (req, res) => {
   if (encerramento !== undefined) up.encerramento = encerramento || null;
   if (divulgacao_valores !== undefined) up.divulgacao_valores = divulgacao_valores || null;
   if (ativo !== undefined) up.ativo = !!ativo;
+  if (up.abertura && up.encerramento && up.encerramento < up.abertura) throw new HttpError(400, 'O encerramento não pode ser antes da abertura.');
   if (!(await db('anos_letivos').where({ ano: req.params.ano }).update({ ...up, updated_at: new Date() }))) throw new HttpError(404, 'Ano letivo não encontrado.');
   res.json({ ok: true });
 }));
-
-// ----- valores por série e turno -----
-router.get('/precos/:ano', verValores, wrap(async (req, res) => res.json(await svc.listarPrecos(Number(req.params.ano)))));
-router.put('/precos/:ano', gravarValores, wrap(async (req, res) => { await svc.salvarPreco(Number(req.params.ano), req.body, { criar: req.body.novo === true }); res.json(await svc.listarPrecos(Number(req.params.ano))); }));
-router.delete('/precos/:ano/:id', gravarValores, wrap(async (req, res) => { await db('precos_serie').where({ id: Number(req.params.id), ano: Number(req.params.ano) }).del(); res.json(await svc.listarPrecos(Number(req.params.ano))); }));
-router.post('/precos/:ano/copiar', gravarValores, wrap(async (req, res) => { await svc.copiarPrecos(Number(req.body.de), Number(req.params.ano), Number(req.body.reajuste_percentual || 0)); res.json(await svc.listarPrecos(Number(req.params.ano))); }));
 
 // ----- envio em massa dos links de rematrícula -----
 router.get('/rematricula-massa/previa', gravar, wrap(async (req, res) => res.json(await massa.previa(req.query.ano ? Number(req.query.ano) : undefined, req.query.aluno_id ? Number(req.query.aluno_id) : undefined))));

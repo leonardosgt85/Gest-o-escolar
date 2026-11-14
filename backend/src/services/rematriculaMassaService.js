@@ -1,6 +1,7 @@
 // Envio em massa dos links de rematrícula (e-mail) aos responsáveis dos alunos cadastrados.
 // A prévia mostra quem recebe e quem fica de fora (com o motivo); o envio é feito em lotes pelo frontend.
 import { db } from '../db.js';
+import { precosDoAno } from './precosService.js';
 import { HttpError } from '../util.js';
 import { carregar, padrao, ROTULOS } from './documentosService.js';
 import * as mat from './matriculasService.js';
@@ -11,7 +12,7 @@ const ENCERRADAS = ['ativa', 'cancelada', 'transferida', 'concluida', 'nao_renov
 
 async function anoAlvo(ano) {
   const letivo = ano ? await db('anos_letivos').where({ ano }).first() : await db('anos_letivos').where({ ativo: true }).orderBy('ano', 'desc').first();
-  if (!letivo) throw new HttpError(400, 'Nenhum ano letivo aberto. Cadastre/abra o ano em "Valores do ano letivo".');
+  if (!letivo) throw new HttpError(400, 'Nenhum ano letivo aberto. Cadastre/abra o ano letivo.');
   if (!letivo.ativo) throw new HttpError(409, `A matrícula de ${letivo.ano} não está aberta.`);
   return letivo;
 }
@@ -32,7 +33,7 @@ export async function previa(anoReq, alunoId) {
   const ano = letivo.ano;
   const [alunos, precos, existentes, anteriores, cfg] = await Promise.all([
     db('alunos').whereNull('excluido_em').modify((q) => { if (alunoId) q.where({ id: alunoId }); }).orderBy('nome_completo').select('id', 'nome_completo', 'liberado_novas_matriculas'),
-    db('precos_serie').where({ ano }).select('serie', 'turno', 'valor_parcela'),
+    precosDoAno(ano),
     db('matriculas').where({ ano }).select('aluno_id', 'id', 'status', 'tipo', 'serie', 'turno', 'portal_enviado_em', 'portal_enviado_para'),
     db('matriculas').where('ano', '<', ano).whereNot('status', 'nao_renovou').orderBy('ano', 'desc').select('aluno_id', 'ano', 'serie', 'turno'),
     email.configurado(),

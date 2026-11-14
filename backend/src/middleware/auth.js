@@ -12,6 +12,8 @@ export async function carregarContexto(usuarioId) {
   const modulos = await db('habilitacoes').where({ ativo: true }).select('chave');
   const modulosAtivos = new Set(modulos.map((m) => m.chave));
   const permissoes = calcularPermissoes({ usuario, grupoPerms, extras: usuario.permissoes_extras, modulosAtivos });
+  // professor entra no Diário de Classe sem depender do grupo (lança só nas disciplinas dele)
+  if (usuario.professor && modulosAtivos.has('academico')) permissoes['academico.diario'] = Math.max(permissoes['academico.diario'] ?? 0, 1);
   return { usuario, grupo, permissoes, modulosAtivos };
 }
 

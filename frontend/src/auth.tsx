@@ -5,6 +5,7 @@ export interface Me {
   id: number;
   nome: string;
   email: string;
+  professor?: boolean;
   nivel: string;
   cargo?: string | null;
   foto?: string | null;

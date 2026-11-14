@@ -21,13 +21,19 @@ export function Modal({ title, onClose, children, footer, wide }: { title: strin
   // devolve o foco ao botão que abriu o modal quando ele fecha
   const aberto = useRef<Element | null>(typeof document !== 'undefined' ? document.activeElement : null);
   useEffect(() => () => { const el = aberto.current as HTMLElement | null; if (el && document.contains(el)) el.focus(); }, []);
+  const fundo = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // com modais empilhados, o Esc fecha só o de cima
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const todos = document.querySelectorAll('.modal-backdrop');
+      if (todos[todos.length - 1] === fundo.current) onClose();
+    };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="modal-backdrop" ref={fundo} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true">
         <div className="modal-header">
           <span>{title}</span>
@@ -98,7 +104,7 @@ export interface Col<T> {
   render: (row: T) => ReactNode;
   width?: string | number;
 }
-export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen, clickable, empty = 'Nenhum registro encontrado.' }: {
+export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen, clickable, cartoes, empty = 'Nenhum registro encontrado.' }: {
   cols: Col<T>[];
   rows: T[];
   rowKey: (r: T) => string | number;
@@ -106,11 +112,12 @@ export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen
   onSelect?: (r: T) => void;
   onOpen?: (r: T) => void;
   clickable?: boolean; // linha inteira clicável (cursor de mão)
+  cartoes?: boolean; // no celular, cada linha vira um cartão (rótulo: valor)
   empty?: string;
 }) {
   return (
     <div className="table-wrap">
-      <table className={`data${clickable ? ' clickable' : ''}`}>
+      <table className={`data${clickable ? ' clickable' : ''}${cartoes ? ' cartoes' : ''}`}>
         <thead>
           <tr>{cols.map((c) => <th key={c.header} style={{ width: c.width }}>{c.header}</th>)}</tr>
         </thead>
@@ -120,7 +127,7 @@ export function DataTable<T>({ cols, rows, rowKey, selectedKey, onSelect, onOpen
           )}
           {rows.map((r) => (
             <tr key={rowKey(r)} className={selectedKey === rowKey(r) ? 'selected' : ''} onClick={() => onSelect?.(r)} onDoubleClick={() => onOpen?.(r)}>
-              {cols.map((c) => <td key={c.header}>{c.render(r)}</td>)}
+              {cols.map((c) => <td key={c.header} data-label={c.header}>{c.render(r)}</td>)}
             </tr>
           ))}
         </tbody>

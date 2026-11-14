@@ -30,6 +30,7 @@ export function montarMe(ctx) {
     email: usuario.email,
     nivel: usuario.nivel,
     cargo: usuario.cargo,
+    professor: !!usuario.professor,
     foto: usuario.foto,
     grupo: grupo ? { id: grupo.id, nome: grupo.nome } : null,
     modulos: [...modulosAtivos],

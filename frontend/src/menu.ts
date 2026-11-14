@@ -12,6 +12,7 @@ export interface MenuItem {
   icone: IconName;
   to: string;
   perm: string; // permissão mínima (consulta) para o item aparecer
+  permAlt?: string; // permissão alternativa: basta uma das duas
   oculto?: boolean; // existe (rota e permissão ativas), mas não aparece no menu nem no hub
   breve?: boolean; // ainda não implementado: só aparece no hub, como "Em breve"
 }
@@ -31,9 +32,9 @@ export const MENU: MenuModule[] = [
     icone: 'academico',
     items: [
       { label: 'Cadastro de Alunos', descricao: 'Ficha completa do aluno: dados, endereço, responsáveis, documentos e processo seletivo.', icone: 'alunos', to: '/academico/alunos', perm: 'academico.alunos' },
-      { label: 'Valores do ano letivo', descricao: 'Valor da parcela por série e turno, número de parcelas e vencimento de cada ano.', icone: 'tag', to: '/academico/valores', perm: 'academico.valores' },
       { label: 'Pessoas (responsáveis)', descricao: 'Pais, mães e responsáveis reutilizáveis entre vários alunos.', icone: 'pessoas', to: '/academico/pessoas', perm: 'academico.pessoas', oculto: true },
-      { label: 'Relatórios', descricao: 'Listagens e relatórios acadêmicos.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos' },
+      { label: 'Diário de Classe', descricao: 'Chamada e provas por turma (sala) e disciplina, lançadas pelo professor.', icone: 'diario', to: '/academico/diario', perm: 'academico.diario' },
+      { label: 'Relatórios', descricao: 'Listagens e relatórios acadêmicos.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos', permAlt: 'academico.diario' },
       { label: 'Dashboard', descricao: 'Indicadores e visão geral da secretaria.', icone: 'dashboard', to: '/academico/dashboard', perm: 'academico.alunos', breve: true },
     ],
   },
@@ -46,6 +47,7 @@ export const MENU: MenuModule[] = [
       { label: 'Usuários', descricao: 'Contas de acesso, grupo e permissões extras de cada usuário.', icone: 'usuarios', to: '/gerencial/usuarios', perm: 'gerencial.usuarios' },
       { label: 'Grupos de Permissão', descricao: 'Perfis de acesso, horários permitidos e níveis por tela.', icone: 'grupos', to: '/gerencial/grupos', perm: 'gerencial.grupos' },
       { label: 'Habilitações', descricao: 'Liga e desliga módulos do sistema.', icone: 'habilitacoes', to: '/gerencial/habilitacoes', perm: 'gerencial.habilitacoes' },
+      { label: 'Cadastros', descricao: 'Disciplinas, turmas e matriz curricular.', icone: 'cadastros', to: '/gerencial/cadastros', perm: 'gerencial.cadastros' },
       { label: 'E-mail', descricao: 'Servidor de envio dos e-mails do sistema (links de rematrícula).', icone: 'send', to: '/gerencial/email', perm: 'gerencial.email' },
     ],
   },
@@ -58,7 +60,7 @@ export function modulosVisiveis(moduloAtivo: (m: string) => boolean, can: (perm:
   return MENU.filter((m) => moduloAtivo(m.modulo))
     .map((m) => ({
       ...m,
-      items: m.items.filter((i) => !i.breve && !i.oculto && can(i.perm, 1)),
+      items: m.items.filter((i) => !i.breve && !i.oculto && (can(i.perm, 1) || (!!i.permAlt && can(i.permAlt, 1)))),
       proximos: m.items.filter((i) => i.breve && can(i.perm, 1)),
     }))
     .filter((m) => m.items.length > 0);

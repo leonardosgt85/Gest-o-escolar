@@ -7,10 +7,10 @@ import { HttpError, ehData, limpar, pick, semAcento, semAcentoSql, wrap } from '
 
 const router = Router();
 
-const CAMPOS = ['nome_completo', 'email', 'nivel', 'situacao', 'grupo_id', 'cargo', 'data_limite', 'comissao_vendas', 'setor', 'foto'];
+const CAMPOS = ['nome_completo', 'email', 'nivel', 'situacao', 'grupo_id', 'cargo', 'data_limite', 'comissao_vendas', 'setor', 'foto', 'professor'];
 const COLUNAS_PUBLICAS = [
   'u.id', 'u.nome_completo', 'u.email', 'u.nivel', 'u.situacao', 'u.grupo_id', 'u.cargo', 'u.data_limite',
-  'u.comissao_vendas', 'u.setor', 'u.outras_informacoes', 'u.permissoes_extras', 'u.ultimo_acesso',
+  'u.comissao_vendas', 'u.setor', 'u.professor', 'u.outras_informacoes', 'u.permissoes_extras', 'u.ultimo_acesso',
   'g.nome as grupo_nome',
 ];
 
@@ -37,21 +37,36 @@ router.get(
   wrap(async (req, res) => {
     const u = await db('usuarios as u').leftJoin('grupos_permissao as g', 'g.id', 'u.grupo_id').select([...COLUNAS_PUBLICAS, 'u.foto']).where('u.id', req.params.id).first();
     if (!u) throw new HttpError(404, 'Usuário não encontrado.');
+    u.disciplinas_ids = (await db('usuario_disciplinas').where({ usuario_id: u.id }).select('disciplina_id')).map((r) => r.disciplina_id);
     res.json(u);
   }),
 );
 
-function validar(dados, { criando }) {
+function validar(dados, { criando, body }) {
+  if (dados.professor === true && Array.isArray(body?.disciplinas_ids) && body.disciplinas_ids.length === 0) throw new HttpError(400, 'Marque ao menos uma disciplina para o professor.');
   if (criando || 'nome_completo' in dados) if (!dados.nome_completo) throw new HttpError(400, 'Informe o nome completo.');
   if (criando || 'email' in dados) {
     if (!dados.email || !/^\S+@\S+\.\S+$/.test(dados.email)) throw new HttpError(400, 'Informe um e-mail válido (é o login do usuário).');
   }
+  if (dados.professor !== undefined && typeof dados.professor !== 'boolean') throw new HttpError(400, 'Valor inválido para "É professor".');
   if (dados.nivel && !NIVEIS_USUARIO.includes(dados.nivel)) throw new HttpError(400, 'Nível inválido.');
   if (dados.situacao && !['Ativo', 'Inativo'].includes(dados.situacao)) throw new HttpError(400, 'Situação inválida.');
   if (dados.data_limite && !ehData(dados.data_limite)) throw new HttpError(400, 'Data limite inválida.');
   if (dados.comissao_vendas != null && (Number(dados.comissao_vendas) < 0 || Number(dados.comissao_vendas) > 100)) {
     throw new HttpError(400, 'A comissão deve estar entre 0 e 100%.');
   }
+}
+
+// Disciplinas do professor (várias por professor; a mesma disciplina pode ter vários professores).
+async function salvarDisciplinas(usuarioId, body, professor) {
+  if (!Array.isArray(body.disciplinas_ids) && professor !== false) return;
+  const ids = professor === false ? [] : [...new Set(body.disciplinas_ids.map(Number).filter(Number.isInteger))];
+  if (ids.length) {
+    const ok = await db('disciplinas').whereIn('id', ids).pluck('id');
+    if (ok.length !== ids.length) throw new HttpError(400, 'Disciplina inválida na lista.');
+  }
+  await db('usuario_disciplinas').where({ usuario_id: usuarioId }).del();
+  if (ids.length) await db('usuario_disciplinas').insert(ids.map((d) => ({ usuario_id: usuarioId, disciplina_id: d })));
 }
 
 function extras(body) {
@@ -72,7 +87,7 @@ router.post(
   can('gerencial.usuarios', 2),
   wrap(async (req, res) => {
     const dados = limpar(pick(req.body, CAMPOS));
-    validar(dados, { criando: true });
+    validar(dados, { criando: true, body: req.body });
     checarNivel(req, dados);
     const senha = String(req.body.senha || '');
     if (senha.length < 6) throw new HttpError(400, 'A senha deve ter ao menos 6 caracteres.');
@@ -86,6 +101,7 @@ router.post(
         permissoes_extras: JSON.stringify(extras(req.body)),
       })
       .returning('id');
+    await salvarDisciplinas(novo.id, req.body, dados.professor === false ? false : undefined);
     res.status(201).json({ id: novo.id });
   }),
 );
@@ -97,7 +113,7 @@ router.put(
     const atual = await db('usuarios').where({ id: req.params.id }).first();
     if (!atual) throw new HttpError(404, 'Usuário não encontrado.');
     const dados = limpar(pick(req.body, CAMPOS));
-    validar(dados, { criando: false });
+    validar(dados, { criando: false, body: req.body });
     checarNivel(req, dados);
     if (atual.nivel === 'Administrador' && req.user.nivel !== 'Administrador') {
       throw new HttpError(403, 'Apenas administradores podem alterar outro administrador.');
@@ -120,6 +136,7 @@ router.put(
       upd.senha_hash = await bcrypt.hash(String(req.body.senha), 10);
     }
     await db('usuarios').where({ id: atual.id }).update(upd);
+    await salvarDisciplinas(atual.id, req.body, 'professor' in dados && !dados.professor ? false : undefined);
     // inativar derruba as sessões abertas
     if (dados.situacao === 'Inativo') await db('sessoes').where({ usuario_id: atual.id }).del();
     res.json({ ok: true });

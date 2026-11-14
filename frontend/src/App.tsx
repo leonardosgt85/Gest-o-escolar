@@ -13,12 +13,19 @@ import Habilitacoes from './pages/gerencial/Habilitacoes';
 import Alunos from './pages/academico/Alunos';
 import AlunoForm from './pages/academico/AlunoForm';
 import Pessoas from './pages/academico/Pessoas';
-import ValoresAno from './pages/academico/ValoresAno';
 import AlunoMatriculas from './pages/academico/AlunoMatriculas';
 import Rematricula from './pages/portal/Rematricula';
 import EmailConfig from './pages/gerencial/EmailConfig';
+import Cadastros from './pages/gerencial/Cadastros';
+import Disciplinas from './pages/gerencial/Disciplinas';
+import Turmas from './pages/gerencial/Turmas';
+import MatrizCurricular from './pages/gerencial/MatrizCurricular';
+import Diario from './pages/academico/Diario';
+import DiarioTurma from './pages/academico/DiarioTurma';
+import ProfessorEscolha from './pages/ProfessorEscolha';
 import Relatorios from './pages/academico/Relatorios';
 import RelatorioDocumentos from './pages/academico/RelatorioDocumentos';
+import RelatorioDiarioMensal from './pages/academico/RelatorioDiarioMensal';
 import MatriculaPagina from './pages/academico/MatriculaPagina';
 
 function Protegido({ children }: { children: ReactElement }) {
@@ -30,9 +37,9 @@ function Protegido({ children }: { children: ReactElement }) {
 }
 
 // Bloqueia a rota se o usuário não tem a permissão (o backend também valida).
-function Exige({ perm, min = 1, children }: { perm: string; min?: number; children: ReactElement }) {
+function Exige({ perm, alt, min = 1, children }: { perm: string; alt?: string; min?: number; children: ReactElement }) {
   const { can } = useAuth();
-  if (!can(perm, min)) {
+  if (!can(perm, min) && !(alt && can(alt, min))) {
     return (
       <div className="alert error">
         Você não tem acesso a esta funcionalidade (módulo não habilitado ou permissão insuficiente).
@@ -51,14 +58,17 @@ export default function App() {
         <Route index element={<Home />} />
         {MENU.map((m) => <Route key={m.modulo} path={m.modulo} element={<ModuloHome />} />)}
 
-        <Route path="academico/relatorios" element={<Exige perm="academico.alunos"><Relatorios /></Exige>} />
+        <Route path="professor" element={<ProfessorEscolha />} />
+        <Route path="academico/diario" element={<Exige perm="academico.diario"><Diario /></Exige>} />
+        <Route path="academico/diario/:turmaId/:did" element={<Exige perm="academico.diario"><DiarioTurma /></Exige>} />
+        <Route path="academico/relatorios" element={<Exige perm="academico.alunos" alt="academico.diario"><Relatorios /></Exige>} />
+        <Route path="academico/relatorios/diario-mensal" element={<Exige perm="academico.diario"><RelatorioDiarioMensal /></Exige>} />
         <Route path="academico/relatorios/documentos" element={<Exige perm="academico.alunos"><RelatorioDocumentos /></Exige>} />
         <Route path="academico/alunos" element={<Exige perm="academico.alunos"><Alunos /></Exige>} />
         <Route path="academico/alunos/novo" element={<Exige perm="academico.alunos.inclusao"><AlunoForm /></Exige>} />
         <Route path="academico/alunos/:id/matriculas" element={<Exige perm="academico.alunos"><AlunoMatriculas /></Exige>} />
         <Route path="academico/matriculas/:id" element={<Exige perm="academico.alunos"><MatriculaPagina /></Exige>} />
         <Route path="academico/alunos/:id" element={<Exige perm="academico.alunos"><AlunoForm /></Exige>} />
-        <Route path="academico/valores" element={<Exige perm="academico.valores"><ValoresAno /></Exige>} />
         <Route path="academico/pessoas" element={<Exige perm="academico.pessoas"><Pessoas /></Exige>} />
 
         <Route path="gerencial/usuarios" element={<Exige perm="gerencial.usuarios"><Usuarios /></Exige>} />
@@ -67,6 +77,10 @@ export default function App() {
         <Route path="gerencial/grupos/:id" element={<Exige perm="gerencial.grupos"><GrupoForm /></Exige>} />
         <Route path="gerencial/habilitacoes" element={<Exige perm="gerencial.habilitacoes"><Habilitacoes /></Exige>} />
 
+        <Route path="gerencial/cadastros" element={<Exige perm="gerencial.cadastros"><Cadastros /></Exige>} />
+        <Route path="gerencial/cadastros/disciplinas" element={<Exige perm="gerencial.cadastros"><Disciplinas /></Exige>} />
+        <Route path="gerencial/cadastros/turmas" element={<Exige perm="gerencial.cadastros"><Turmas /></Exige>} />
+        <Route path="gerencial/cadastros/matriz" element={<Exige perm="gerencial.cadastros"><MatrizCurricular /></Exige>} />
         <Route path="gerencial/email" element={<Exige perm="gerencial.email"><EmailConfig /></Exige>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

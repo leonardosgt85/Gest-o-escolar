@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, qs } from '../../api';
 import { ACESSO, useAuth } from '../../auth';
 import { Crumbs, Alert, DataTable, FormSections, Modal, Tabs, useFlash, type Section } from '../../components/ui';
+import DisciplinaSelect from '../../components/DisciplinaSelect';
 import PermissionEditor from '../../components/PermissionEditor';
 import { fmtDataHora, lerArquivoComoDataUrl } from '../../lib/utils';
 
@@ -63,6 +64,7 @@ export default function Usuarios() {
           { header: 'Nome completo', render: (u) => <b>{u.nome_completo}</b> },
           { header: 'E-mail (login)', render: (u) => u.email },
           { header: 'Cargo', render: (u) => u.cargo },
+          { header: 'Professor', width: 90, render: (u) => (u.professor ? 'Sim' : '') },
           { header: 'Nível', render: (u) => u.nivel },
           { header: 'Situação', render: (u) => <span className={`badge ${u.situacao === 'Ativo' ? 'ok' : 'off'}`}>{u.situacao}</span> },
           { header: 'Grupo de permissão', render: (u) => u.grupo_nome },
@@ -85,6 +87,7 @@ export default function Usuarios() {
 function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: number; readOnly: boolean; souAdmin: boolean; onClose: () => void; onSaved: () => void }) {
   const [aba, setAba] = useState(0);
   const [form, setForm] = useState<Record<string, any>>({ nivel: 'Usuário', situacao: 'Ativo', outras_informacoes: {}, permissoes_extras: {} });
+  const { can } = useAuth();
   const [grupos, setGrupos] = useState<{ id: number; nome: string }[]>([]);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -92,7 +95,7 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
 
   useEffect(() => {
     api.get('/grupos').then(setGrupos).catch(() => {});
-    if (id) api.get(`/usuarios/${id}`).then((u) => setForm({ ...u, data_limite: u.data_limite || '' })).catch((e) => setErro(e.message));
+    if (id) api.get(`/usuarios/${id}`).then((u) => setForm({ ...u, data_limite: u.data_limite || '', disciplinas_ids: u.disciplinas_ids || [] })).catch((e) => setErro(e.message));
   }, [id]);
 
   const dados: Section[] = [{
@@ -145,6 +148,21 @@ function UsuarioModal({ id, readOnly, souAdmin, onClose, onSaved }: { id?: numbe
                   </select>
                 </div>
               </div>
+              <div className="field span-4">
+                <label id="lbl-prof">É professor?</label>
+                <div className="radio-row" role="radiogroup" aria-labelledby="lbl-prof">
+                  {[['Não', false], ['Sim', true]].map(([r, v]) => (
+                    <label key={String(r)}><input type="radio" name="professor" disabled={readOnly} checked={!!form.professor === v} onChange={() => setForm({ ...form, professor: v, disciplinas_ids: v ? form.disciplinas_ids || [] : [] })} /> {r}</label>
+                  ))}
+                </div>
+              </div>
+              {form.professor && (
+                <div className="field span-4">
+                  <label>Disciplinas que leciona</label>
+                  <DisciplinaSelect multiple value={form.disciplinas_ids || []} onChange={(v) => setForm({ ...form, disciplinas_ids: v })} readOnly={readOnly} podeCriar={can('gerencial.usuarios', ACESSO.manutencao) || can('gerencial.cadastros', ACESSO.manutencao)} />
+                  <small className="muted">O professor enxerga essas disciplinas em todas as turmas. Uma disciplina pode ter vários professores.</small>
+                </div>
+              )}
             </div>
           </div>
           <div>

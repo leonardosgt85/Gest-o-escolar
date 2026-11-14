@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import Icon from '../components/Icon';
 import { modulosVisiveis } from '../menu';
@@ -6,6 +6,8 @@ import { modulosVisiveis } from '../menu';
 export default function Home() {
   const { me, can, moduloAtivo } = useAuth();
   const modulos = modulosVisiveis(moduloAtivo, can);
+  // professor: a cada login pergunta se quer lançar notas/frequência ou fazer outra coisa
+  if (me?.professor && !sessionStorage.getItem('csm.prof.escolha')) return <Navigate to="/professor" replace />;
   return (
     <>
       <div className="page-title">

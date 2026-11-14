@@ -5,6 +5,7 @@ import { db } from '../db.js';
 import { HttpError, formatarCpf } from '../util.js';
 import { carregar, gerarArquivos, padrao, ROTULOS, telefone, dadosColegio } from './documentosService.js';
 import * as autentique from './autentique.js';
+import { precoDe, precosDoAno } from './precosService.js';
 
 export const DOCS_ALUNO = [
   ['certidao', 'Certidão de nascimento'],
@@ -155,7 +156,7 @@ export async function estado(id) {
   const assinado = m.assinatura_modo === 'manual' ? manualCompleto : autentiqueCompleto;
   const upload = exigeUpload(m);
   const anexosAluno = Object.fromEntries(DOCS_ALUNO.map(([k]) => [k, docs.filter((d) => d.chave === k && d.versao === 'anexo').pop() || null]));
-  const okDoc = (k) => (upload ? !!anexosAluno[k] : !!m.docs_entregues?.[k]);
+  const okDoc = (k) => !!m.docs_entregues?.[k]; // marcado pela secretaria ou anexado (anexar marca)
   const entregues = DOCS_ALUNO.filter(([k]) => okDoc(k)).length;
   const efetivada = m.status === 'ativa';
 
@@ -175,7 +176,7 @@ export async function estado(id) {
     },
     aluno: { id: aluno.id, nome: aluno.nome_completo, nascimento: aluno.data_nascimento, liberado: aluno.liberado_novas_matriculas !== 'Não' },
     letivo,
-    precos: await db('precos_serie').where({ ano: m.ano }).select('serie', 'turno', 'valor_parcela').orderBy(['serie', 'turno']),
+    precos: await precosDoAno(m.ano),
     opcoes,
     contatos: { emails, celulares },
     docs_aluno: DOCS_ALUNO.map(([chave, rotulo]) => ({ chave, rotulo, ok: okDoc(chave), arquivo: anexosAluno[chave] ? { id: anexosAluno[chave].id, nome: anexosAluno[chave].arquivo, mime: anexosAluno[chave].mime, enviado_em: anexosAluno[chave].created_at } : null })),
@@ -194,36 +195,6 @@ export async function estado(id) {
     },
     driver: autentique.modo(),
   };
-}
-
-/* ---------- valores por série e turno ---------- */
-async function precoDe(ano, serie, turno) {
-  const p = await db('precos_serie').where({ ano, turno }).whereRaw('lower(serie) = lower(?)', [serie]).first();
-  return p ? Number(p.valor_parcela) : null;
-}
-export async function listarPrecos(ano) {
-  const letivo = await db('anos_letivos').where({ ano }).first();
-  if (!letivo) throw new HttpError(404, 'Ano letivo não encontrado.');
-  const itens = await db('precos_serie').where({ ano }).orderBy(['serie', 'turno']);
-  return { letivo, itens: itens.map((i) => ({ ...i, valor_parcela: Number(i.valor_parcela) })), anos: (await db('anos_letivos').orderBy('ano', 'desc')).map((a) => a.ano) };
-}
-export async function salvarPreco(ano, { serie, turno, valor_parcela }, { criar = false } = {}) {
-  const s = String(serie || '').trim();
-  const v = Number(String(valor_parcela).replace(',', '.'));
-  if (!s) throw new HttpError(400, 'Informe a série.');
-  if (!['Manhã', 'Tarde', 'Integral'].includes(turno)) throw new HttpError(400, 'Turno inválido.');
-  if (!(v > 0)) throw new HttpError(400, 'Informe um valor de parcela maior que zero.');
-  const ja = await db('precos_serie').where({ ano, turno }).whereRaw('lower(serie) = lower(?)', [s]).first();
-  if (ja && criar) throw new HttpError(409, `Já existe valor para ${ja.serie} (${turno}) em ${ano}: R$ ${Number(ja.valor_parcela).toFixed(2).replace('.', ',')}. Edite o valor na própria linha.`);
-  if (ja) await db('precos_serie').where({ id: ja.id }).update({ valor_parcela: Math.round(v * 100) / 100, updated_at: agora() });
-  else await db('precos_serie').insert({ ano, serie: s, turno, valor_parcela: Math.round(v * 100) / 100 });
-}
-export async function copiarPrecos(de, para, reajuste) {
-  if (!de || de === para) throw new HttpError(400, 'Escolha outro ano de origem.');
-  const origem = await db('precos_serie').where({ ano: de });
-  if (!origem.length) throw new HttpError(409, `O ano ${de} não tem valores cadastrados.`);
-  const f = 1 + (Number(reajuste) || 0) / 100;
-  for (const o of origem) await salvarPreco(para, { serie: o.serie, turno: o.turno, valor_parcela: Math.round(Number(o.valor_parcela) * f * 100) / 100 });
 }
 
 /* ---------- edição dos dados ---------- */
@@ -264,7 +235,6 @@ export async function atualizar(id, body, usuarioId) {
     up.desconto_percentual = n;
   }
   if ('docs_entregues' in body) {
-    if (exigeUpload(m)) throw new HttpError(409, 'Na rematrícula os documentos do aluno são confirmados por envio do arquivo (upload).');
     const d = {};
     for (const [k] of DOCS_ALUNO) d[k] = !!body.docs_entregues?.[k];
     up.docs_entregues = JSON.stringify(d);
@@ -289,13 +259,14 @@ export async function atualizar(id, body, usuarioId) {
     if (!Number.isInteger(n) || n < 1 || n > Math.min(5, m.passo_max)) throw new HttpError(400, 'Passo indisponível.');
     up.passo = n;
   }
-  if (CAMPOS_BLOQUEIAM.some((c) => c in up)) {
-    const vivo = await db('assinaturas').where({ matricula_id: id }).whereIn('status', ABERTOS).first();
+  // só bloqueia se algum desses campos realmente mudou (reenviar o mesmo valor não conta)
+  if (CAMPOS_BLOQUEIAM.some((c) => c in up && String(up[c] ?? '') !== String(m[c] ?? ''))) {
+    const vivo = await db('assinaturas').where({ matricula_id: id }).whereNot({ provedor: 'manual' }).whereIn('status', ABERTOS).first();
     if (vivo) throw new HttpError(409, 'Os documentos já foram enviados para assinatura. Cancele o envio antes de alterar série, turno, responsável ou condições.');
   }
   if (!Object.keys(up).length) return;
   if ('serie' in up || 'turno' in up) {
-    // o valor da parcela vem da tabela "Valores do ano letivo" (série + turno)
+    // o valor da parcela vem das turmas do ano (série + turno)
     const serie = 'serie' in up ? up.serie : m.serie;
     const turno = 'turno' in up ? up.turno : m.turno;
     up.valor_parcela = serie && turno ? await precoDe(m.ano, serie, turno) : null;
@@ -313,7 +284,7 @@ export async function avancar(id, usuarioId) {
   }
   if (de === 2) {
     if (!m.responsavel_id) throw new HttpError(400, 'Escolha quem assina em nome da família.');
-    if (!(Number(m.valor_parcela) > 0)) throw new HttpError(400, `Não há valor cadastrado para ${m.serie} (${m.turno}) em ${m.ano}. Cadastre em "Valores do ano letivo".`);
+    if (!(Number(m.valor_parcela) > 0)) throw new HttpError(400, `Não há valor cadastrado para ${m.serie} (${m.turno}) em ${m.ano}. Informe o valor na turma (Gerencial > Cadastros > Turmas).`);
     if (!m.parcelas || !m.dia_vencimento) throw new HttpError(400, 'Preencha parcelas e vencimento.');
   }
   if (de === 4 && !e.checks.assinado) throw new HttpError(409, 'A assinatura ainda não foi concluída.');
@@ -352,7 +323,6 @@ function tipoPorConteudo(b) {
 export async function anexarDocumentoAluno(id, chave, buffer, nomeOriginal, { usuarioId = null, origem = 'secretaria' } = {}) {
   const m = await obter(id);
   if (m.status === 'ativa') throw new HttpError(409, 'Matrícula já efetivada.');
-  if (!exigeUpload(m)) throw new HttpError(409, 'Nesta matrícula (nova) os documentos são conferidos por clique.');
   const rotulo = DOCS_ALUNO.find(([k]) => k === chave)?.[1];
   if (!rotulo) throw new HttpError(400, 'Documento inválido.');
   if (!Buffer.isBuffer(buffer) || buffer.length === 0) throw new HttpError(400, 'Arquivo vazio.');
