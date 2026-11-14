@@ -101,13 +101,13 @@ export default function DiarioTurma() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Diário de Classe', to: '/academico/diario' }, { label: titulo }]} />
+          <Crumbs items={[{ label: 'Pedagógico', to: '/pedagogico' }, { label: 'Diário de Classe', to: '/academico/diario' }, { label: titulo }]} />
           <h1>{titulo}</h1>
           {info && <div className="muted">{info.turma.turno} · {info.turma.ano} · {alunos.length} aluno(s)</div>}
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
-      {info && alunos.length === 0 && <Alert kind="info">Esta turma ainda não tem alunos. Em Gerencial › Cadastros › Turmas use “Enturmar alunos”.</Alert>}
+      {info && alunos.length === 0 && <Alert kind="info">Esta turma ainda não tem alunos. Em Estrutura da escola › Turmas e ano letivo use “Enturmar alunos”.</Alert>}
       {info && !podeLancar && <Alert kind="info">Somente consulta: você não lança nesta disciplina.</Alert>}
 
       <div className="dia-barra">

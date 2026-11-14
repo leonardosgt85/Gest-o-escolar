@@ -17,7 +17,9 @@ export interface MenuItem {
   breve?: boolean; // ainda não implementado: só aparece no hub, como "Em breve"
 }
 export interface MenuModule {
-  modulo: string;
+  id: string; // identifica o grupo no menu e na URL do hub (/<id>)
+  modulo: string; // habilitação do módulo (liga/desliga); vários grupos podem usar o mesmo
+  rotas?: string[]; // telas fora do menu que pertencem a este grupo (para destacar o grupo certo)
   label: string;
   descricao: string;
   icone: IconName;
@@ -26,33 +28,56 @@ export interface MenuModule {
 
 export const MENU: MenuModule[] = [
   {
+    id: 'secretaria',
     modulo: 'academico',
-    label: 'Gestão Acadêmica',
-    descricao: 'Alunos, responsáveis, relatórios e indicadores',
-    icone: 'academico',
+    label: 'Secretaria',
+    descricao: 'Alunos, matrículas, rematrículas e documentos',
+    icone: 'alunos',
+    rotas: ['/academico/matriculas', '/academico/pessoas', '/academico/relatorios'],
     items: [
-      { label: 'Cadastro de Alunos', descricao: 'Ficha completa do aluno: dados, endereço, responsáveis, documentos e processo seletivo.', icone: 'alunos', to: '/academico/alunos', perm: 'academico.alunos' },
-      { label: 'Pessoas (responsáveis)', descricao: 'Pais, mães e responsáveis reutilizáveis entre vários alunos.', icone: 'pessoas', to: '/academico/pessoas', perm: 'academico.pessoas', oculto: true },
-      { label: 'Diário de Classe', descricao: 'Chamada e provas por turma (sala) e disciplina, lançadas pelo professor.', icone: 'diario', to: '/academico/diario', perm: 'academico.diario' },
-      { label: 'Relatórios', descricao: 'Listagens e relatórios acadêmicos.', icone: 'relatorios', to: '/academico/relatorios', perm: 'academico.alunos', permAlt: 'academico.diario' },
+      { label: 'Alunos', descricao: 'Ficha completa do aluno: dados, endereço, responsáveis, documentos, matrículas e processo seletivo.', icone: 'alunos', to: '/academico/alunos', perm: 'academico.alunos' },
+      { label: 'Documentos do aluno', descricao: 'Atestados de escolaridade e conclusão e histórico escolar, gerados com os dados de cada aluno.', icone: 'fileDown', to: '/academico/relatorios/documentos', perm: 'academico.alunos' },
+      { label: 'Responsáveis', descricao: 'Pais, mães e responsáveis reutilizáveis entre vários alunos.', icone: 'pessoas', to: '/academico/pessoas', perm: 'academico.pessoas', oculto: true },
       { label: 'Dashboard', descricao: 'Indicadores e visão geral da secretaria.', icone: 'dashboard', to: '/academico/dashboard', perm: 'academico.alunos', breve: true },
     ],
   },
   {
+    id: 'pedagogico',
+    modulo: 'academico',
+    label: 'Pedagógico',
+    descricao: 'Diário de classe: chamada, provas e relatório mensal',
+    icone: 'diario',
+    items: [
+      { label: 'Diário de Classe', descricao: 'Chamada e provas por turma (sala) e disciplina, lançadas pelo professor.', icone: 'diario', to: '/academico/diario', perm: 'academico.diario' },
+      { label: 'Diário mensal (PDF)', descricao: 'Chamada do mês, notas do bimestre e conteúdo ministrado, por turma e disciplina, para imprimir.', icone: 'relatorios', to: '/academico/relatorios/diario-mensal', perm: 'academico.diario' },
+    ],
+  },
+  {
+    id: 'estrutura',
     modulo: 'gerencial',
-    label: 'Gerencial',
-    descricao: 'Usuários, grupos de permissão e habilitações',
+    label: 'Estrutura da escola',
+    descricao: 'Ano letivo, turmas, matriz curricular e disciplinas',
+    icone: 'cadastros',
+    rotas: ['/gerencial/cadastros'],
+    items: [
+      { label: 'Turmas e ano letivo', descricao: 'Abrir o ano e a matrícula, turmas por série e turno com o valor da parcela, e enturmação dos alunos.', icone: 'grupos', to: '/gerencial/cadastros/turmas', perm: 'gerencial.cadastros' },
+      { label: 'Matriz curricular', descricao: 'Disciplinas de cada série, carga horária e dias da semana das aulas.', icone: 'diario', to: '/gerencial/cadastros/matriz', perm: 'gerencial.cadastros' },
+      { label: 'Disciplinas e professores', descricao: 'Componentes curriculares da escola e os professores de cada um.', icone: 'cadastros', to: '/gerencial/cadastros/disciplinas', perm: 'gerencial.cadastros' },
+    ],
+  },
+  {
+    id: 'administracao',
+    modulo: 'gerencial',
+    label: 'Administração',
+    descricao: 'Usuários, perfis de acesso, módulos e e-mail',
     icone: 'gerencial',
     items: [
-      { label: 'Usuários', descricao: 'Contas de acesso, grupo e permissões extras de cada usuário.', icone: 'usuarios', to: '/gerencial/usuarios', perm: 'gerencial.usuarios' },
-      { label: 'Grupos de Permissão', descricao: 'Perfis de acesso, horários permitidos e níveis por tela.', icone: 'grupos', to: '/gerencial/grupos', perm: 'gerencial.grupos' },
-      { label: 'Habilitações', descricao: 'Liga e desliga módulos do sistema.', icone: 'habilitacoes', to: '/gerencial/habilitacoes', perm: 'gerencial.habilitacoes' },
-      { label: 'Cadastros', descricao: 'Disciplinas, turmas e matriz curricular.', icone: 'cadastros', to: '/gerencial/cadastros', perm: 'gerencial.cadastros' },
+      { label: 'Usuários', descricao: 'Contas de acesso, perfil e permissões extras de cada usuário.', icone: 'usuarios', to: '/gerencial/usuarios', perm: 'gerencial.usuarios' },
+      { label: 'Perfis de acesso', descricao: 'Perfis (grupos de permissão), horários permitidos e níveis por tela.', icone: 'grupos', to: '/gerencial/grupos', perm: 'gerencial.grupos' },
+      { label: 'Módulos', descricao: 'Liga e desliga módulos do sistema (habilitações).', icone: 'habilitacoes', to: '/gerencial/habilitacoes', perm: 'gerencial.habilitacoes' },
       { label: 'E-mail', descricao: 'Servidor de envio dos e-mails do sistema (links de rematrícula).', icone: 'send', to: '/gerencial/email', perm: 'gerencial.email' },
     ],
   },
-  // Exemplo de módulo futuro (aparece quando a habilitação for ativada e houver itens):
-  // { modulo: 'kanban', label: 'Kanban', descricao: '...', icone: 'gerencial', items: [{ label: 'Quadros', descricao: '...', icone: 'gerencial', to: '/kanban/quadros', perm: 'kanban.quadros' }] },
 ];
 
 /** Módulos visíveis ao usuário: habilitados e com ao menos um item real permitido. */

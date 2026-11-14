@@ -34,7 +34,7 @@ export default function MatrizCurricular() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Cadastros', to: '/gerencial/cadastros' }, { label: 'Matriz curricular' }]} />
+          <Crumbs items={[{ label: 'Estrutura da escola', to: '/estrutura' }, { label: 'Matriz curricular' }]} />
           <h1>Matriz curricular</h1>
         </div>
       </div>

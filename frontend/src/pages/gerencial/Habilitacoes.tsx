@@ -27,13 +27,13 @@ export default function Habilitacoes() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Habilitações' }]} />
-          <h1>Habilitações</h1>
+          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Módulos' }]} />
+          <h1>Módulos</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
       <Alert kind="info">
-        Habilitações definem quais módulos a escola utiliza. O acesso efetivo de cada usuário é a habilitação do módulo ∩ o grupo de permissão ∩ as permissões extras do usuário.
+        Os módulos definem quais módulos a escola utiliza. O acesso efetivo de cada usuário é a habilitação do módulo ∩ o grupo de permissão ∩ as permissões extras do usuário.
         {!editavel && ' Somente administradores podem alterar.'}
       </Alert>
       <DataTable

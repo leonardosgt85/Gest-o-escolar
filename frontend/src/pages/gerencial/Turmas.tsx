@@ -5,7 +5,7 @@ import { Alert, Crumbs, DataTable, Modal, useFlash } from '../../components/ui';
 
 type Flash = ReturnType<typeof useFlash>;
 
-interface Turma { id: number; ano: number; serie: string; nome: string; turno: string; ativo: boolean; alunos: number; valor_parcela: number | string | null }
+interface Turma { id: number; ano: number; serie: string; nome: string; turno: string; ativo: boolean; alunos: number; valor_parcela: number | string | null; limite_alunos: number | null }
 const brl = (v: number | string | null) => (v === null || v === undefined || v === '' ? '' : Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 const TURNOS = ['Manhã', 'Tarde', 'Integral'];
 const anoAtual = new Date().getFullYear();
@@ -31,8 +31,8 @@ export default function Turmas() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Cadastros', to: '/gerencial/cadastros' }, { label: 'Turmas' }]} />
-          <h1>Turmas</h1>
+          <Crumbs items={[{ label: 'Estrutura da escola', to: '/estrutura' }, { label: 'Turmas e ano letivo' }]} />
+          <h1>Turmas e ano letivo</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
@@ -43,6 +43,9 @@ export default function Turmas() {
         {manut && <button className="btn" onClick={() => setEntur(true)}>Enturmar alunos</button>}
         <label className="switch">Ano letivo <input className="input" style={{ width: 90, marginLeft: 6 }} type="number" min={2000} max={2100} value={ano} onChange={(e) => setAno(e.target.value)} /></label>
       </div>
+      {lista.filter((t) => t.ativo && t.limite_alunos && t.alunos >= t.limite_alunos).map((t) => (
+        <Alert key={t.id} kind="info">Turma {t.serie} {t.nome} ({t.turno}) está cheia ({t.alunos}/{t.limite_alunos}). Crie outra turma da série {t.serie} para novos alunos.</Alert>
+      ))}
       {manut && <PlanoAno ano={ano} onCopiado={() => void carregar()} onMsg={flash} />}
       <DataTable
         cartoes
@@ -57,7 +60,7 @@ export default function Turmas() {
           { header: 'Turma', width: 90, render: (t) => t.nome },
           { header: 'Turno', width: 110, render: (t) => t.turno },
           { header: 'Parcela', width: 120, render: (t) => (Number(t.valor_parcela) > 0 ? brl(t.valor_parcela) : <span className="badge warn">Sem valor</span>) },
-          { header: 'Alunos', width: 90, render: (t) => t.alunos },
+          { header: 'Alunos', width: 130, render: (t) => (t.limite_alunos ? <>{t.alunos}/{t.limite_alunos} {t.alunos >= t.limite_alunos && <span className="badge warn">Cheia</span>}</> : t.alunos) },
           { header: 'Situação', width: 100, render: (t) => <span className={`badge ${t.ativo ? 'ok' : 'off'}`}>{t.ativo ? 'Ativa' : 'Inativa'}</span> },
         ]}
       />
@@ -68,7 +71,7 @@ export default function Turmas() {
 }
 
 function TurmaModal({ turma, anoPadrao, onClose, onSaved }: { turma?: Turma; anoPadrao: string; onClose: () => void; onSaved: () => void }) {
-  const [f, setF] = useState({ ano: turma?.ano ?? Number(anoPadrao), serie: turma?.serie ?? '', nome: turma?.nome ?? '', turno: turma?.turno ?? 'Manhã', ativo: turma?.ativo ?? true, valor_parcela: turma?.valor_parcela != null ? String(turma.valor_parcela).replace('.', ',') : '' });
+  const [f, setF] = useState({ ano: turma?.ano ?? Number(anoPadrao), serie: turma?.serie ?? '', nome: turma?.nome ?? '', turno: turma?.turno ?? 'Manhã', ativo: turma?.ativo ?? true, limite_alunos: turma?.limite_alunos != null ? String(turma.limite_alunos) : '', valor_parcela: turma?.valor_parcela != null ? String(turma.valor_parcela).replace('.', ',') : '' });
   const [series, setSeries] = useState<string[]>([]);
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -93,23 +96,25 @@ function TurmaModal({ turma, anoPadrao, onClose, onSaved }: { turma?: Turma; ano
           <select id="t-turno" className="input" value={f.turno} onChange={(e) => setF({ ...f, turno: e.target.value })}>{TURNOS.map((t) => <option key={t}>{t}</option>)}</select>
         </div>
         <div className="field span-2"><label htmlFor="t-valor">Valor da parcela (R$)</label><input id="t-valor" className="input" inputMode="decimal" placeholder="0,00" value={f.valor_parcela} onChange={(e) => setF({ ...f, valor_parcela: e.target.value.replace(/[^\d,.]/g, '') })} /></div>
+        <div className="field span-2"><label htmlFor="t-lim">Limite de alunos</label><input id="t-lim" className="input" inputMode="numeric" placeholder="Sem limite" value={f.limite_alunos} onChange={(e) => setF({ ...f, limite_alunos: e.target.value.replace(/\D/g, '') })} /><small className="muted">Ao lotar, a turma bloqueia novas enturmações e avisa para criar outra da mesma série.</small></div>
         {turma && <div className="field span-4"><label className="switch"><input type="checkbox" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} /> Turma ativa</label></div>}
       </div>
     </Modal>
   );
 }
 
-interface SemTurma { matricula_id: number; aluno: string; serie: string | null; turno: string | null; candidatas: { id: number; nome: string }[] }
+interface SemTurma { matricula_id: number; aluno: string; serie: string | null; turno: string | null; candidatas: { id: number; nome: string; cheia?: boolean }[] }
 
 function EnturmarModal({ ano, onClose }: { ano: string; onClose: () => void }) {
   const [lista, setLista] = useState<SemTurma[] | null>(null);
   const [msg, setMsg] = useState('');
   const [erro, setErro] = useState('');
+  const [avisos, setAvisos] = useState<string[]>([]);
   const carregar = () => api.get<SemTurma[]>(`/cadastros/enturmacao?ano=${ano}`).then(setLista).catch((e) => setErro(e.message));
   useEffect(() => { void carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   async function automatica() {
     setErro('');
-    try { const r = await api.post<{ enturmados: number; restantes: SemTurma[] }>('/cadastros/enturmacao/automatica', { ano: Number(ano) }); setMsg(`${r.enturmados} aluno(s) enturmados automaticamente (mesma série e turno).`); setLista(r.restantes); }
+    try { const r = await api.post<{ enturmados: number; restantes: SemTurma[]; avisos: string[] }>('/cadastros/enturmacao/automatica', { ano: Number(ano) }); setMsg(`${r.enturmados} aluno(s) enturmados automaticamente (mesma série e turno).`); setAvisos(r.avisos || []); setLista(r.restantes); }
     catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
   }
   async function escolher(m: SemTurma, turmaId: string) {
@@ -121,6 +126,7 @@ function EnturmarModal({ ano, onClose }: { ano: string; onClose: () => void }) {
     <Modal wide title={`Enturmar alunos — ${ano}`} onClose={onClose} footer={<button className="btn btn-primary" onClick={onClose}>Fechar</button>}>
       <Alert>{erro}</Alert>
       {msg && <Alert kind="ok">{msg}</Alert>}
+      {avisos.map((a) => <Alert key={a} kind="info">{a}</Alert>)}
       <p style={{ marginTop: 0 }}>Considera os alunos com matrícula efetivada em {ano} que ainda não estão em nenhuma turma. A automática coloca cada um na turma de mesma série e turno; o que sobrar você escolhe abaixo.</p>
       <button className="btn btn-green" onClick={() => void automatica()}>Enturmar automaticamente</button>
       {lista && lista.length === 0 && <p className="muted">Nenhum aluno sem turma.</p>}
@@ -128,10 +134,10 @@ function EnturmarModal({ ano, onClose }: { ano: string; onClose: () => void }) {
         <ul className="chamada" style={{ marginTop: 12 }}>
           {lista.map((m) => (
             <li key={m.matricula_id}>
-              <span className="nome">{m.aluno}<br /><small className="muted">{m.serie || 'sem série'} · {m.turno || 'sem turno'}</small></span>
+              <span className="nome">{m.aluno}<br /><small className="muted">{m.serie || 'sem série'} · {m.turno || 'sem turno'}</small>{m.candidatas.length > 0 && m.candidatas.every((c) => c.cheia) && <small className="err-txt" style={{ display: 'block', color: '#b45309' }}>Todas as turmas de {m.serie} estão cheias. Crie outra turma.</small>}</span>
               <select className="input" style={{ maxWidth: 220 }} aria-label={`Turma de ${m.aluno}`} value="" onChange={(e) => void escolher(m, e.target.value)}>
                 <option value="">Escolher turma…</option>
-                {m.candidatas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                {m.candidatas.map((c) => <option key={c.id} value={c.id} disabled={c.cheia}>{c.nome}{c.cheia ? ' — CHEIA' : ''}</option>)}
               </select>
             </li>
           ))}

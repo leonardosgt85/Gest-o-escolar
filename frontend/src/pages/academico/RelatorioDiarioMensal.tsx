@@ -40,8 +40,8 @@ export default function RelatorioDiarioMensal() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Relatórios', to: '/academico/relatorios' }, { label: 'Diário de classe mensal' }]} />
-          <h1>Diário de classe mensal</h1>
+          <Crumbs items={[{ label: 'Pedagógico', to: '/pedagogico' }, { label: 'Diário mensal (PDF)' }]} />
+          <h1>Diário mensal (PDF)</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}

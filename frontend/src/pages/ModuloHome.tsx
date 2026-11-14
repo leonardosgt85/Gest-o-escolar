@@ -11,7 +11,7 @@ export default function ModuloHome() {
   const { can, moduloAtivo } = useAuth();
   const { pathname } = useLocation();
   const [envio, setEnvio] = useState(false);
-  const m = modulosVisiveis(moduloAtivo, can).find((x) => `/${x.modulo}` === pathname.replace(/\/$/, ''));
+  const m = modulosVisiveis(moduloAtivo, can).find((x) => `/${x.id}` === pathname.replace(/\/$/, ''));
   if (!m) return <Navigate to="/" replace />;
   return (
     <>
@@ -20,7 +20,7 @@ export default function ModuloHome() {
           <Crumbs items={[{ label: 'Início', to: '/' }, { label: m.label }]} />
           <h1>{m.label}</h1>
         </div>
-        {m.modulo === 'academico' && can('academico.alunos', 2) && (
+        {m.id === 'secretaria' && can('academico.alunos', 2) && (
           <button className="btn btn-sm" onClick={() => setEnvio(true)} title="Enviar por e-mail o link de rematrícula aos responsáveis"><Icon name="send" size={14} /> Enviar links de rematrícula</button>
         )}
       </div>

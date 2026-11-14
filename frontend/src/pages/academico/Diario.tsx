@@ -28,7 +28,7 @@ export default function Diario() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Diário de Classe' }]} />
+          <Crumbs items={[{ label: 'Pedagógico', to: '/pedagogico' }, { label: 'Diário de Classe' }]} />
           <h1>Diário de Classe</h1>
         </div>
       </div>

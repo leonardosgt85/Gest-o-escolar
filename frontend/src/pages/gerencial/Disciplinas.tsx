@@ -26,7 +26,7 @@ export default function Disciplinas() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Cadastros', to: '/gerencial/cadastros' }, { label: 'Disciplinas' }]} />
+          <Crumbs items={[{ label: 'Estrutura da escola', to: '/estrutura' }, { label: 'Disciplinas e professores' }]} />
           <h1>Disciplinas</h1>
         </div>
       </div>
@@ -49,7 +49,12 @@ export default function Disciplinas() {
         cols={[
           { header: 'Disciplina', render: (d) => <b>{d.nome}</b> },
           { header: 'Sigla', width: 90, render: (d) => d.sigla },
-          { header: 'Professores', width: 110, render: (d) => d.professores },
+          { header: 'Professores', width: 110, render: (d) => (d.professores && d.professores_nomes?.length ? (
+            <span className="hint" tabIndex={0} aria-label={`Professores: ${d.professores_nomes.join(', ')}`}>
+              <span className="hint-n">{d.professores}</span>
+              <span className="hint-box" role="tooltip"><b>Professores ({d.professores})</b>{d.professores_nomes.map((n) => <span key={n}>{n}</span>)}</span>
+            </span>
+          ) : d.professores) },
           { header: 'Séries na matriz', width: 130, render: (d) => d.usos_matriz },
           { header: 'Situação', width: 100, render: (d) => <span className={`badge ${d.ativo ? 'ok' : 'off'}`}>{d.ativo ? 'Ativa' : 'Inativa'}</span> },
         ]}

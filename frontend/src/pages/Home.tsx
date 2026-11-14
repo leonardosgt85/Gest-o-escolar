@@ -16,7 +16,7 @@ export default function Home() {
       {modulos.length === 0 && <div className="card empty">Você ainda não tem acesso a nenhum módulo. Fale com o administrador.</div>}
       <div className="module-cards">
         {modulos.map((m) => (
-          <Link key={m.modulo} to={`/${m.modulo}`} className="module-card">
+          <Link key={m.id} to={`/${m.id}`} className="module-card">
             <span className="module-card-icon"><Icon name={m.icone} size={22} /></span>
             <h3>{m.label}</h3>
             <p>{m.descricao}</p>

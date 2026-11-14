@@ -41,7 +41,7 @@ export default function Usuarios() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Usuários' }]} />
+          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Usuários' }]} />
           <h1>Usuários</h1>
         </div>
       </div>

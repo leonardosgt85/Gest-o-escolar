@@ -45,7 +45,7 @@ export default function GrupoForm() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Grupos de Permissão', to: '/gerencial/grupos' }, { label: 'Grupo' }]} />
+          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Perfis de acesso', to: '/gerencial/grupos' }, { label: 'Grupo' }]} />
           <h1>{novo ? 'Novo grupo' : readOnly ? 'Consultar grupo' : 'Editar grupo'}</h1>
         </div>
       </div>

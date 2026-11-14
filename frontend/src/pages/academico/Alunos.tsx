@@ -67,7 +67,7 @@ export default function Alunos() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos' }]} />
+          <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos' }]} />
           <h1>Alunos</h1>
         </div>
       </div>

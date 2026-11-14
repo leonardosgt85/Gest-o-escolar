@@ -23,7 +23,7 @@ export default function MatriculaTimeline({ e, onContinuar }: { e: Estado; onCon
 
   return (
     <>
-      <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: e.aluno.nome, to: `/academico/alunos/${e.aluno.id}/matriculas` }, { label: `Matrícula ${m.ano}` }]} />
+      <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos', to: '/academico/alunos' }, { label: e.aluno.nome, to: `/academico/alunos/${e.aluno.id}/matriculas` }, { label: `Matrícula ${m.ano}` }]} />
       <div className="mat-top" style={{ marginTop: 10 }}>
         <Link className="btn" to={`/academico/alunos/${e.aluno.id}/matriculas`}><Icon name="back" size={14} /> Matrículas</Link>
         <h1>Matrícula {m.ano}</h1>

@@ -207,7 +207,7 @@ export default function AlunoForm() {
   if (naoAchou) {
     return (
       <>
-        <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: 'Aluno' }]} />
+        <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos', to: '/academico/alunos' }, { label: 'Aluno' }]} />
         <div className="card empty" role="alert"><p>Aluno não encontrado.</p><Link className="btn" to="/academico/alunos">Voltar para a lista</Link></div>
       </>
     );
@@ -216,8 +216,8 @@ export default function AlunoForm() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: novo ? 'Novo aluno' : 'Aluno' }]} />
-          <h1>Cadastro de Alunos {!novo && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· Código {id}</span>}</h1>
+          <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos', to: '/academico/alunos' }, { label: novo ? 'Novo aluno' : 'Aluno' }]} />
+          <h1>Alunos {!novo && <span style={{ color: 'var(--muted)', fontWeight: 400 }}>· Código {id}</span>}</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}

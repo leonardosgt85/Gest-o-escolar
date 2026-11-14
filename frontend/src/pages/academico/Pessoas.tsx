@@ -35,8 +35,8 @@ export default function Pessoas() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Pessoas (responsáveis)' }]} />
-          <h1>Pessoas (responsáveis)</h1>
+          <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Responsáveis' }]} />
+          <h1>Responsáveis</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}

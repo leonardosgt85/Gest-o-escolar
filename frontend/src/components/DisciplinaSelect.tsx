@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Alert, Modal } from './ui';
 
-export interface Disciplina { id: number; nome: string; sigla: string | null; ativo: boolean; professores?: number; usos_matriz?: number }
+export interface Disciplina { id: number; nome: string; sigla: string | null; ativo: boolean; professores?: number; professores_nomes?: string[]; usos_matriz?: number }
 
 /** Cadastro/edição de disciplina em modal. Usado na tela de Disciplinas e "na hora", dentro de outros formulários. */
 export function DisciplinaModal({ disciplina, onClose, onSaved }: { disciplina?: Disciplina; onClose: () => void; onSaved: (d: Disciplina) => void }) {

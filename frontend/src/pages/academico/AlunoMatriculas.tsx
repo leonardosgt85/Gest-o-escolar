@@ -55,7 +55,7 @@ export default function AlunoMatriculas() {
 
   return (
     <>
-      <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: a.nome }]} />
+      <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos', to: '/academico/alunos' }, { label: a.nome }]} />
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
 
       <div className="mat-head" style={{ marginTop: 10 }}>

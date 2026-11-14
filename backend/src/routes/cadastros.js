@@ -22,7 +22,7 @@ const inteiro = (v, rot, { min = 0, max = 100000 } = {}) => {
 /* ---------- disciplinas ---------- */
 router.get('/disciplinas', ler, wrap(async (req, res) => {
   const q = db('disciplinas as d')
-    .select('d.*', db.raw('(select count(*) from usuario_disciplinas ud where ud.disciplina_id = d.id)::int as professores'), db.raw('(select count(*) from matriz_curricular m where m.disciplina_id = d.id)::int as usos_matriz'))
+    .select('d.*', db.raw('(select count(*) from usuario_disciplinas ud where ud.disciplina_id = d.id)::int as professores'), db.raw("coalesce((select array_agg(u.nome_completo order by lower(u.nome_completo)) from usuario_disciplinas ud join usuarios u on u.id = ud.usuario_id where ud.disciplina_id = d.id), '{}') as professores_nomes"), db.raw('(select count(*) from matriz_curricular m where m.disciplina_id = d.id)::int as usos_matriz'))
     .orderBy('d.nome');
   if (req.query.somente_ativos === 'true') q.where('d.ativo', true);
   if (req.query.q) q.whereRaw(`${semAcentoSql('d.nome')} like ?`, [`%${likeSeguro(semAcento(req.query.q))}%`]);
@@ -72,10 +72,16 @@ router.get('/series', ler, wrap(async (req, res) => {
 }));
 
 /* ---------- turmas ---------- */
+const ocupacao = async (turmaId, exceto) => {
+  const q = db('matriculas').where({ turma_id: turmaId, status: 'ativa' });
+  if (exceto) q.whereNot({ id: exceto });
+  return Number((await q.count('* as n').first()).n);
+};
+const msgCheia = (t) => `A turma ${t.serie} ${t.nome} (${t.turno}) está cheia (limite de ${t.limite_alunos} alunos). Crie outra turma da série ${t.serie} em Turmas e ano letivo.`;
 const TURNOS = ['Manhã', 'Tarde', 'Integral'];
 router.get('/turmas', ler, wrap(async (req, res) => {
   const q = db('turmas as t')
-    .select('t.*', db.raw('(select count(*) from matriculas m where m.turma_id = t.id)::int as alunos'))
+    .select('t.*', db.raw("(select count(*) from matriculas m where m.turma_id = t.id and m.status = 'ativa')::int as alunos"))
     .orderBy([{ column: 't.ano', order: 'desc' }, 't.serie', 't.nome', 't.turno']);
   if (req.query.ano) q.where('t.ano', Number(req.query.ano));
   res.json(await q);
@@ -92,7 +98,9 @@ function validarTurma(b) {
   const bruto = b.valor_parcela === null || b.valor_parcela === undefined ? '' : (String(b.valor_parcela).includes(',') ? String(b.valor_parcela).replace(/\./g, '') : String(b.valor_parcela)).trim().replace(',', '.');
   const valor = bruto === '' ? null : Number(bruto);
   if (valor !== null && !(valor >= 0)) throw new HttpError(400, 'Valor da parcela inválido.');
-  return { ano, serie, nome: nome.slice(0, 20), turno: b.turno, valor_parcela: valor === null ? null : Math.round(valor * 100) / 100 };
+  const lim = b.limite_alunos === null || b.limite_alunos === undefined || String(b.limite_alunos).trim() === '' ? null : Number(b.limite_alunos);
+  if (lim !== null && !(Number.isInteger(lim) && lim >= 1 && lim <= 500)) throw new HttpError(400, 'Limite de alunos inválido (use um número inteiro de 1 a 500 ou deixe vazio para sem limite).');
+  return { ano, serie, nome: nome.slice(0, 20), turno: b.turno, valor_parcela: valor === null ? null : Math.round(valor * 100) / 100, limite_alunos: lim };
 }
 const erroDup = (e) => { if (e.code === '23505') throw new HttpError(409, 'Já existe uma turma com este ano, série, nome e turno.'); throw e; };
 
@@ -108,7 +116,7 @@ router.post('/turmas/copiar-ano', gravar, wrap(async (req, res) => {
     const ja = await db('turmas').where({ ano: para, serie: o.serie, nome: o.nome, turno: o.turno }).first();
     if (ja) continue;
     const v = o.valor_parcela == null ? null : Math.round(Number(o.valor_parcela) * f * 100) / 100;
-    await db('turmas').insert({ ano: para, serie: o.serie, nome: o.nome, turno: o.turno, ativo: true, valor_parcela: v });
+    await db('turmas').insert({ ano: para, serie: o.serie, nome: o.nome, turno: o.turno, ativo: true, valor_parcela: v, limite_alunos: o.limite_alunos });
     criadas += 1;
   }
   res.json({ criadas, existentes: origem.length - criadas });
@@ -122,6 +130,10 @@ router.post('/turmas', gravar, wrap(async (req, res) => {
 router.put('/turmas/:id', gravar, wrap(async (req, res) => {
   const d = validarTurma(req.body);
   if (req.body.ativo !== undefined) d.ativo = !!req.body.ativo;
+  if (d.limite_alunos) {
+    const ocup = await ocupacao(req.params.id);
+    if (ocup > d.limite_alunos) throw new HttpError(409, `A turma já tem ${ocup} alunos. O limite não pode ser menor que isso.`);
+  }
   const n = await db('turmas').where({ id: req.params.id }).update(d).catch(erroDup);
   if (!n) throw new HttpError(404, 'Turma não encontrada.');
   res.json({ ok: true });
@@ -142,8 +154,9 @@ async function matriculasSemTurma(ano) {
   const mats = await db('matriculas as m').join('alunos as a', 'a.id', 'm.aluno_id')
     .where({ 'm.ano': ano, 'm.status': 'ativa' }).whereNull('m.turma_id')
     .select('m.id as matricula_id', 'a.nome_completo as aluno', 'm.serie', 'm.turno').orderByRaw('lower(a.nome_completo)');
-  const turmas = await db('turmas').where({ ano, ativo: true }).orderBy(['serie', 'nome']);
-  return mats.map((m) => ({ ...m, candidatas: turmas.filter((t) => mesmaSerie(t.serie, m.serie)).map((t) => ({ id: t.id, nome: `${t.serie} ${t.nome} — ${t.turno}`, turno: t.turno })), unica: turmas.filter((t) => mesmaSerie(t.serie, m.serie) && turnoNorm(t.turno) === turnoNorm(m.turno)) }));
+  const turmas = await db('turmas').where({ ano, ativo: true }).orderBy(['serie', 'nome'])
+    .select('*', db.raw("(select count(*) from matriculas x where x.turma_id = turmas.id and x.status = 'ativa')::int as ocupadas"));
+  return mats.map((m) => ({ ...m, candidatas: turmas.filter((t) => mesmaSerie(t.serie, m.serie)).map((t) => ({ id: t.id, nome: `${t.serie} ${t.nome} — ${t.turno}`, turno: t.turno, cheia: !!t.limite_alunos && t.ocupadas >= t.limite_alunos })), unica: turmas.filter((t) => mesmaSerie(t.serie, m.serie) && turnoNorm(t.turno) === turnoNorm(m.turno)) }));
 }
 router.get('/enturmacao', ler, wrap(async (req, res) => {
   const ano = inteiro(req.query.ano, 'Ano', { min: 2000, max: 2100 }) || new Date().getFullYear();
@@ -153,17 +166,23 @@ router.get('/enturmacao', ler, wrap(async (req, res) => {
 router.post('/enturmacao/automatica', gravar, wrap(async (req, res) => {
   const ano = inteiro(req.body.ano, 'Ano', { min: 2000, max: 2100 });
   let enturmados = 0;
+  const cheias = new Map();
   for (const m of await matriculasSemTurma(ano)) {
-    if (m.unica.length === 1) { await db('matriculas').where({ id: m.matricula_id }).update({ turma_id: m.unica[0].id }); enturmados += 1; }
+    if (m.unica.length !== 1) continue;
+    const t = m.unica[0];
+    if (t.limite_alunos && (await ocupacao(t.id)) >= t.limite_alunos) { cheias.set(t.id, msgCheia(t)); continue; }
+    await db('matriculas').where({ id: m.matricula_id }).update({ turma_id: t.id }); enturmados += 1;
   }
   const restantes = (await matriculasSemTurma(ano)).map(({ unica, ...m }) => m);
-  res.json({ enturmados, restantes });
+  res.json({ enturmados, restantes, avisos: [...cheias.values()] });
 }));
 router.put('/enturmacao/:matriculaId', gravar, wrap(async (req, res) => {
   const turmaId = req.body.turma_id === null || req.body.turma_id === '' ? null : inteiro(req.body.turma_id, 'Turma');
   const m = await db('matriculas').where({ id: req.params.matriculaId }).first();
   if (!m) throw new HttpError(404, 'Matrícula não encontrada.');
-  if (turmaId && !(await db('turmas').where({ id: turmaId, ano: m.ano }).first())) throw new HttpError(400, 'A turma precisa ser do mesmo ano da matrícula.');
+  const turma = turmaId ? await db('turmas').where({ id: turmaId, ano: m.ano }).first() : null;
+  if (turmaId && !turma) throw new HttpError(400, 'A turma precisa ser do mesmo ano da matrícula.');
+  if (turma?.limite_alunos && m.turma_id !== turma.id && (await ocupacao(turma.id, m.id)) >= turma.limite_alunos) throw new HttpError(409, msgCheia(turma));
   await db('matriculas').where({ id: m.id }).update({ turma_id: turmaId });
   res.json({ ok: true });
 }));

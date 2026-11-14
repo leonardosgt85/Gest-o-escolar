@@ -13,7 +13,7 @@ export default function Cadastros() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Cadastros' }]} />
+          <Crumbs items={[{ label: 'Estrutura da escola' }]} />
           <h1>Cadastros</h1>
         </div>
       </div>

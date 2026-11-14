@@ -22,6 +22,7 @@ import Turmas from './pages/gerencial/Turmas';
 import MatrizCurricular from './pages/gerencial/MatrizCurricular';
 import Diario from './pages/academico/Diario';
 import DiarioTurma from './pages/academico/DiarioTurma';
+import Ajuda from './pages/Ajuda';
 import ProfessorEscolha from './pages/ProfessorEscolha';
 import Relatorios from './pages/academico/Relatorios';
 import RelatorioDocumentos from './pages/academico/RelatorioDocumentos';
@@ -56,9 +57,13 @@ export default function App() {
       <Route path="/rematricula/:token" element={<Rematricula />} />
       <Route element={<Protegido><Layout /></Protegido>}>
         <Route index element={<Home />} />
-        {MENU.map((m) => <Route key={m.modulo} path={m.modulo} element={<ModuloHome />} />)}
+        {MENU.map((m) => <Route key={m.id} path={m.id} element={<ModuloHome />} />)}
+        <Route path="academico" element={<Navigate to="/secretaria" replace />} />
+        <Route path="gerencial" element={<Navigate to="/administracao" replace />} />
 
         <Route path="professor" element={<ProfessorEscolha />} />
+        <Route path="ajuda" element={<Ajuda />} />
+        <Route path="ajuda/:slug" element={<Ajuda />} />
         <Route path="academico/diario" element={<Exige perm="academico.diario"><Diario /></Exige>} />
         <Route path="academico/diario/:turmaId/:did" element={<Exige perm="academico.diario"><DiarioTurma /></Exige>} />
         <Route path="academico/relatorios" element={<Exige perm="academico.alunos" alt="academico.diario"><Relatorios /></Exige>} />

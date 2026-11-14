@@ -76,7 +76,7 @@ export default function EnvioRematriculas({ onClose, alunoId, nomeAluno }: { onC
       {p && fase === 'lista' && (
         <>
           <p style={{ margin: '0 0 10px', color: 'var(--muted)', fontSize: 13 }}>Cada responsável financeiro recebe um e-mail com o link para conferir os dados, enviar os documentos e assinar. Confira a série e o turno de {p.ano} de cada aluno.</p>
-          {!p.email_configurado && <Alert kind="error">O envio de e-mail ainda não foi configurado. Vá em Gerencial → E-mail.</Alert>}
+          {!p.email_configurado && <Alert kind="error">O envio de e-mail ainda não foi configurado. Vá em Administração → E-mail.</Alert>}
           {p.series.length === 0 && <Alert kind="info">Nenhum valor cadastrado para {p.ano}. Informe o valor da parcela nas turmas do ano para liberar o envio.</Alert>}
           {aptos.length === 0 ? <div className="empty">Nenhum aluno elegível.</div> : (
             <div style={{ overflowX: 'auto' }}>

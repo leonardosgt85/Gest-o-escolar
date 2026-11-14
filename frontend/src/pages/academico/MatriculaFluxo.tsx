@@ -437,7 +437,7 @@ export default function MatriculaFluxo({ e, setE, onConcluir }: { e: Estado; set
       {modalEnvio}
       {modalLink}
       {modalCancelar}
-      <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Cadastro de Alunos', to: '/academico/alunos' }, { label: e.aluno.nome, to: `/academico/alunos/${e.aluno.id}/matriculas` }, { label: `${m.tipo === 'nova' ? 'Matrícula' : 'Rematrícula'} ${m.ano}` }]} />
+      <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Alunos', to: '/academico/alunos' }, { label: e.aluno.nome, to: `/academico/alunos/${e.aluno.id}/matriculas` }, { label: `${m.tipo === 'nova' ? 'Matrícula' : 'Rematrícula'} ${m.ano}` }]} />
       <div className="mat-top" style={{ marginTop: 10 }}>
         <Link className="btn" to={`/academico/alunos/${e.aluno.id}/matriculas`}><Icon name="back" size={14} /> Matrículas</Link>
         <h1>{m.tipo === 'nova' ? 'Matrícula' : 'Rematrícula'} {m.ano}</h1>

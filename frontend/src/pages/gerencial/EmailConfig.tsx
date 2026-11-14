@@ -34,7 +34,7 @@ export default function EmailConfig() {
 
   return (
     <>
-      <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'E-mail' }]} />
+      <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'E-mail' }]} />
       <h1 className="page-title">Envio de e-mail</h1>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
       <div className={`alert ${cfg.configurado ? 'ok' : 'info'}`}>{cfg.configurado ? 'E-mail configurado.' : 'E-mail ainda não configurado. Escolha um provedor abaixo.'}</div>

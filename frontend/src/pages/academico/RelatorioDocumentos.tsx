@@ -93,7 +93,7 @@ export default function RelatorioDocumentos() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gestão Acadêmica', to: '/academico' }, { label: 'Relatórios', to: '/academico/relatorios' }, { label: 'Documentos do aluno' }]} />
+          <Crumbs items={[{ label: 'Secretaria', to: '/secretaria' }, { label: 'Documentos do aluno' }]} />
           <h1>Documentos do aluno</h1>
         </div>
       </div>

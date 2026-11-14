@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { modulosVisiveis } from '../menu';
+import { MENU, modulosVisiveis } from '../menu';
 import Icon from './Icon';
 
 const CHAVE_COLAPSADO = 'csm.sidebar.colapsado';
@@ -25,7 +25,15 @@ export default function Layout() {
 
   // Só aparecem módulos habilitados com ao menos um item permitido.
   const modulos = modulosVisiveis(moduloAtivo, can);
-  const moduloDoCaminho = modulos.find((m) => pathname === `/${m.modulo}` || pathname.startsWith(`/${m.modulo}/`))?.modulo;
+  // grupo da página atual: o do item (ou rota) de caminho mais específico; o hub /<id> também conta
+  const moduloDoCaminho = (() => {
+    let melhor: { id: string; n: number } | null = null;
+    for (const m of modulos) {
+      const caminhos = [`/${m.id}`, ...m.items.map((i) => i.to), ...(m.rotas || []), ...(MENU.find((x) => x.id === m.id)?.items.map((i) => i.to) || [])];
+      for (const c of caminhos) if ((pathname === c || pathname.startsWith(`${c}/`)) && (!melhor || c.length > melhor.n)) melhor = { id: m.id, n: c.length };
+    }
+    return melhor?.id;
+  })();
 
   // Submenu (acordeão): o módulo da página atual abre sozinho; clicar no módulo abre/fecha o submenu.
   const [aberto, setAberto] = useState<string | null>(moduloDoCaminho ?? null);
@@ -94,22 +102,22 @@ export default function Layout() {
             <span className="nav-label">Início</span>
           </NavLink>
           {modulos.map((m) => {
-            const ativo = moduloDoCaminho === m.modulo;
-            const expandido = !recolhidoDesktop && aberto === m.modulo;
+            const ativo = moduloDoCaminho === m.id;
+            const expandido = !recolhidoDesktop && aberto === m.id;
             return (
-              <div key={m.modulo} className={`nav-module${expandido ? ' open' : ''}${ativo ? ' has-active' : ''}`}>
+              <div key={m.id} className={`nav-module${expandido ? ' open' : ''}${ativo ? ' has-active' : ''}`}>
                 <button
                   className="nav-module-btn"
-                  onClick={(e) => clicarModulo(m.modulo, e.currentTarget)}
-                  aria-expanded={recolhidoDesktop ? flutuante?.modulo === m.modulo : expandido}
-                  aria-controls={`submenu-${m.modulo}`}
+                  onClick={(e) => clicarModulo(m.id, e.currentTarget)}
+                  aria-expanded={recolhidoDesktop ? flutuante?.modulo === m.id : expandido}
+                  aria-controls={`submenu-${m.id}`}
                   title={m.label}
                 >
                   <Icon name={m.icone} />
                   <span className="nav-label">{m.label}</span>
                   <span className="chev"><Icon name="chevron" size={14} /></span>
                 </button>
-                <div className="nav-items" id={`submenu-${m.modulo}`}>
+                <div className="nav-items" id={`submenu-${m.id}`}>
                   <div className="nav-items-inner">
                     {m.items.map((i) => (
                       <NavLink key={i.to} to={i.to} tabIndex={expandido ? 0 : -1} className={({ isActive }) => `nav-sub${isActive ? ' active' : ''}`}>
@@ -124,11 +132,11 @@ export default function Layout() {
         </nav>
       </aside>
       {flutuante && (() => {
-        const m = modulos.find((x) => x.modulo === flutuante.modulo);
+        const m = modulos.find((x) => x.id === flutuante.modulo);
         if (!m) return null;
         return (
           <div className="flyout" ref={flutRef} style={{ top: Math.max(8, flutuante.top) }} role="menu" aria-label={m.label}>
-            <Link to={`/${m.modulo}`} className="flyout-title">{m.label}</Link>
+            <Link to={`/${m.id}`} className="flyout-title">{m.label}</Link>
             {m.items.map((i) => (
               <NavLink key={i.to} to={i.to} role="menuitem" className={({ isActive }) => `nav-sub${isActive ? ' active' : ''}`}>{i.label}</NavLink>
             ))}
@@ -144,6 +152,7 @@ export default function Layout() {
           </button>
           <Link to="/" className="topbar-logo" aria-label="Início"><img src="/logo-csm-mark.jpg" alt="CSM" /></Link>
           <div className="topbar-spacer" />
+          <Link to="/ajuda" className="icon-btn" title="Ajuda" aria-label="Ajuda"><Icon name="help" /></Link>
           <div className="user-chip">
             <div className="user-text">
               <b>{me?.nome}</b>

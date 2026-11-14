@@ -40,8 +40,8 @@ export default function GruposPermissao() {
     <>
       <div className="page-title">
         <div>
-          <Crumbs items={[{ label: 'Gerencial', to: '/gerencial' }, { label: 'Grupos de Permissão' }]} />
-          <h1>Grupos de Permissão</h1>
+          <Crumbs items={[{ label: 'Administração', to: '/administracao' }, { label: 'Perfis de acesso' }]} />
+          <h1>Perfis de acesso</h1>
         </div>
       </div>
       {flash.msg && <Alert kind={flash.msg.kind} onClose={flash.clear}>{flash.msg.text}</Alert>}
